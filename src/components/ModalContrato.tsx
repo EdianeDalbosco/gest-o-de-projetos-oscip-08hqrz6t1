@@ -28,6 +28,8 @@ import type {
   ProjetoRecord,
 } from '@/types'
 import { Loader2 } from 'lucide-react'
+import { maskCurrency, parseCurrencyBRL, formatCurrencyBRL } from '@/lib/masks'
+import { formatBRL } from '@/components/StatusBadge'
 
 interface ModalContratoProps {
   open: boolean
@@ -49,7 +51,7 @@ export function ModalContrato({
   const [tipo, setTipo] = useState<ContratoTipo>(defaultTipo)
   const [nome, setNome] = useState('')
   const [cargoFuncao, setCargoFuncao] = useState('')
-  const [valor, setValor] = useState<number | string>('')
+  const [valor, setValor] = useState<string>('')
   const [tipoPJ, setTipoPJ] = useState<ContratoTipoPJ>('horas')
   const [dataInicio, setDataInicio] = useState(new Date().toISOString().split('T')[0])
   const [dataFim, setDataFim] = useState('')
@@ -70,7 +72,11 @@ export function ModalContrato({
         setTipo(contratoToEdit.tipo)
         setNome(contratoToEdit.nome || '')
         setCargoFuncao(contratoToEdit.cargo_funcao || '')
-        setValor(contratoToEdit.valor || '')
+        setValor(
+          contratoToEdit.valor !== undefined && contratoToEdit.valor !== null
+            ? formatCurrencyBRL(contratoToEdit.valor)
+            : '',
+        )
         setTipoPJ(contratoToEdit.tipo_pj || 'horas')
         setDataInicio(
           contratoToEdit.data_inicio
@@ -111,7 +117,10 @@ export function ModalContrato({
     const errs: Record<string, string> = {}
     if (!nome.trim()) errs.nome = 'Nome do colaborador ou razão social PJ é obrigatório.'
     if (!cargoFuncao.trim()) errs.cargoFuncao = 'Cargo ou função técnica é obrigatório.'
-    if (!valor || Number(valor) <= 0) errs.valor = 'Informe um valor financeiro válido.'
+    const numValor = parseCurrencyBRL(valor)
+    if (!valor || isNaN(numValor) || numValor <= 0) {
+      errs.valor = 'Informe um valor financeiro válido.'
+    }
     if (!dataInicio) errs.dataInicio = 'Data de início é obrigatória.'
     setErrors(errs)
     return Object.keys(errs).length === 0
@@ -121,13 +130,15 @@ export function ModalContrato({
     e.preventDefault()
     if (!validate()) return
 
+    const numValor = parseCurrencyBRL(valor)
+
     setLoading(true)
     try {
       const payload: Partial<ContratoRecord> = {
         tipo,
         nome: nome.trim(),
         cargo_funcao: cargoFuncao.trim(),
-        valor: Number(valor),
+        valor: numValor,
         tipo_pj: tipo === 'PJ' ? tipoPJ : undefined,
         data_inicio: new Date(dataInicio).toISOString(),
         data_fim: dataFim ? new Date(dataFim).toISOString() : undefined,
@@ -239,21 +250,46 @@ export function ModalContrato({
             <div className="space-y-1.5">
               <Label htmlFor="valor" className="text-xs font-semibold text-[#1E293B]">
                 {tipo === 'CLT'
-                  ? 'Salário Base (R$) *'
+                  ? 'Salário Base *'
                   : tipoPJ === 'horas'
-                    ? 'Valor por Hora (R$) *'
-                    : 'Valor Mensal Fechado (R$) *'}
+                    ? 'Valor por Hora *'
+                    : 'Valor Mensal Fechado *'}
               </Label>
-              <Input
-                id="valor"
-                type="number"
-                min="0"
-                step="0.01"
-                value={valor}
-                onChange={(e) => setValor(e.target.value)}
-                placeholder="0.00"
-                className={errors.valor ? 'border-red-500' : ''}
-              />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#64748B]">
+                  R$
+                </span>
+                <Input
+                  id="valor"
+                  type="text"
+                  inputMode="numeric"
+                  value={valor}
+                  onChange={(e) => {
+                    const masked = maskCurrency(e.target.value)
+                    setValor(masked)
+                    if (errors.valor) {
+                      setErrors((prev) => {
+                        const copy = { ...prev }
+                        delete copy.valor
+                        return copy
+                      })
+                    }
+                  }}
+                  placeholder="0,00"
+                  className={`pl-9 text-xs font-semibold tabular-nums ${
+                    errors.valor ? 'border-red-500' : ''
+                  }`}
+                />
+              </div>
+              {valor && parseCurrencyBRL(valor) > 0 && (
+                <p className="text-[11px] text-[#64748B] flex items-center justify-between">
+                  <span>Valor:</span>
+                  <span className="font-semibold text-emerald-700">
+                    {formatBRL(parseCurrencyBRL(valor))}
+                    {tipo === 'PJ' && tipoPJ === 'horas' ? '/h' : ''}
+                  </span>
+                </p>
+              )}
               {errors.valor && <p className="text-xs text-red-500">{errors.valor}</p>}
             </div>
           </div>

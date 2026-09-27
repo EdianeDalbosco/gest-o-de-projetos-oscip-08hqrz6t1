@@ -21,6 +21,8 @@ import {
 import { createCatalogoAtividade, updateCatalogoAtividade } from '@/services/api'
 import type { CatalogoAtividadeRecord, TipoExecucaoAtividade } from '@/types'
 import { Loader2 } from 'lucide-react'
+import { maskCurrency, parseCurrencyBRL, formatCurrencyBRL } from '@/lib/masks'
+import { formatBRL } from '@/components/StatusBadge'
 
 interface ModalCatalogoAtividadeProps {
   open: boolean
@@ -40,10 +42,10 @@ export function ModalCatalogoAtividade({
   const [tipoVinculo, setTipoVinculo] = useState<'CLT' | 'PJ'>('PJ')
   const [tipoExecucao, setTipoExecucao] = useState<TipoExecucaoAtividade>('Serviço Mensal')
   const [descricao, setDescricao] = useState('')
-  const [valorUnitario, setValorUnitario] = useState<number | string>('')
-  const [proventos, setProventos] = useState<number | string>('')
-  const [provisao, setProvisao] = useState<number | string>('')
-  const [encargos, setEncargos] = useState<number | string>('')
+  const [valorUnitario, setValorUnitario] = useState<string>('')
+  const [proventos, setProventos] = useState<string>('')
+  const [provisao, setProvisao] = useState<string>('')
+  const [encargos, setEncargos] = useState<string>('')
   const [detalhesEscopo, setDetalhesEscopo] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
@@ -53,10 +55,26 @@ export function ModalCatalogoAtividade({
       setTipoVinculo(atividadeToEdit.tipo_vinculo)
       setTipoExecucao(atividadeToEdit.tipo_execucao)
       setDescricao(atividadeToEdit.descricao || '')
-      setValorUnitario(atividadeToEdit.valor_unitario || '')
-      setProventos(atividadeToEdit.proventos || '')
-      setProvisao(atividadeToEdit.provisao || '')
-      setEncargos(atividadeToEdit.encargos || '')
+      setValorUnitario(
+        atividadeToEdit.valor_unitario !== undefined && atividadeToEdit.valor_unitario !== null
+          ? formatCurrencyBRL(atividadeToEdit.valor_unitario)
+          : '',
+      )
+      setProventos(
+        atividadeToEdit.proventos !== undefined && atividadeToEdit.proventos !== null
+          ? formatCurrencyBRL(atividadeToEdit.proventos)
+          : '',
+      )
+      setProvisao(
+        atividadeToEdit.provisao !== undefined && atividadeToEdit.provisao !== null
+          ? formatCurrencyBRL(atividadeToEdit.provisao)
+          : '',
+      )
+      setEncargos(
+        atividadeToEdit.encargos !== undefined && atividadeToEdit.encargos !== null
+          ? formatCurrencyBRL(atividadeToEdit.encargos)
+          : '',
+      )
       setDetalhesEscopo(atividadeToEdit.detalhes_escopo || '')
     } else {
       setTipoVinculo('PJ')
@@ -72,23 +90,20 @@ export function ModalCatalogoAtividade({
   }, [atividadeToEdit, open])
 
   // Recalcular valor unitário para CLT se proventos + provisão + encargos forem preenchidos
-  const handleRecalcularCLT = (
-    prov: number | string,
-    provis: number | string,
-    enc: number | string,
-  ) => {
-    const p = Number(prov) || 0
-    const pr = Number(provis) || 0
-    const en = Number(enc) || 0
+  const handleRecalcularCLT = (provStr: string, provisStr: string, encStr: string) => {
+    const p = parseCurrencyBRL(provStr)
+    const pr = parseCurrencyBRL(provisStr)
+    const en = parseCurrencyBRL(encStr)
     if (p > 0 || pr > 0 || en > 0) {
-      setValorUnitario((p + pr + en).toFixed(2))
+      setValorUnitario(formatCurrencyBRL(p + pr + en))
     }
   }
 
   const validate = () => {
     const errs: Record<string, string> = {}
     if (!descricao.trim()) errs.descricao = 'Descrição da atividade / cargo é obrigatória.'
-    if (!valorUnitario || Number(valorUnitario) <= 0) {
+    const numUnitario = parseCurrencyBRL(valorUnitario)
+    if (!valorUnitario || isNaN(numUnitario) || numUnitario <= 0) {
       errs.valorUnitario = 'Informe o valor unitário / remuneração base.'
     }
     setErrors(errs)
@@ -99,6 +114,11 @@ export function ModalCatalogoAtividade({
     e.preventDefault()
     if (!validate()) return
 
+    const numUnitario = parseCurrencyBRL(valorUnitario)
+    const numProv = proventos ? parseCurrencyBRL(proventos) : undefined
+    const numProvis = provisao ? parseCurrencyBRL(provisao) : undefined
+    const numEnc = encargos ? parseCurrencyBRL(encargos) : undefined
+
     setLoading(true)
     try {
       const payload: Partial<CatalogoAtividadeRecord> = {
@@ -106,10 +126,10 @@ export function ModalCatalogoAtividade({
         tipo_vinculo: tipoVinculo,
         tipo_execucao: tipoExecucao,
         descricao: descricao.trim(),
-        valor_unitario: Number(valorUnitario),
-        proventos: proventos ? Number(proventos) : undefined,
-        provisao: provisao ? Number(provisao) : undefined,
-        encargos: encargos ? Number(encargos) : undefined,
+        valor_unitario: numUnitario,
+        proventos: numProv,
+        provisao: numProvis,
+        encargos: numEnc,
         detalhes_escopo: detalhesEscopo.trim() || undefined,
       }
 
@@ -218,46 +238,64 @@ export function ModalCatalogoAtividade({
               </span>
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <Label className="text-[10px] text-[#64748B]">Proventos (R$)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={proventos}
-                    onChange={(e) => {
-                      setProventos(e.target.value)
-                      handleRecalcularCLT(e.target.value, provisao, encargos)
-                    }}
-                    placeholder="0.00"
-                    className="h-8 text-xs"
-                  />
+                  <Label className="text-[10px] text-[#64748B]">Proventos</Label>
+                  <div className="relative">
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-[#64748B]">
+                      R$
+                    </span>
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      value={proventos}
+                      onChange={(e) => {
+                        const masked = maskCurrency(e.target.value)
+                        setProventos(masked)
+                        handleRecalcularCLT(masked, provisao, encargos)
+                      }}
+                      placeholder="0,00"
+                      className="pl-7 h-8 text-xs font-semibold tabular-nums"
+                    />
+                  </div>
                 </div>
                 <div>
-                  <Label className="text-[10px] text-[#64748B]">Provisão (R$)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={provisao}
-                    onChange={(e) => {
-                      setProvisao(e.target.value)
-                      handleRecalcularCLT(proventos, e.target.value, encargos)
-                    }}
-                    placeholder="0.00"
-                    className="h-8 text-xs"
-                  />
+                  <Label className="text-[10px] text-[#64748B]">Provisão</Label>
+                  <div className="relative">
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-[#64748B]">
+                      R$
+                    </span>
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      value={provisao}
+                      onChange={(e) => {
+                        const masked = maskCurrency(e.target.value)
+                        setProvisao(masked)
+                        handleRecalcularCLT(proventos, masked, encargos)
+                      }}
+                      placeholder="0,00"
+                      className="pl-7 h-8 text-xs font-semibold tabular-nums"
+                    />
+                  </div>
                 </div>
                 <div>
-                  <Label className="text-[10px] text-[#64748B]">Encargos (R$)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={encargos}
-                    onChange={(e) => {
-                      setEncargos(e.target.value)
-                      handleRecalcularCLT(proventos, provisao, e.target.value)
-                    }}
-                    placeholder="0.00"
-                    className="h-8 text-xs"
-                  />
+                  <Label className="text-[10px] text-[#64748B]">Encargos</Label>
+                  <div className="relative">
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-[#64748B]">
+                      R$
+                    </span>
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      value={encargos}
+                      onChange={(e) => {
+                        const masked = maskCurrency(e.target.value)
+                        setEncargos(masked)
+                        handleRecalcularCLT(proventos, provisao, masked)
+                      }}
+                      placeholder="0,00"
+                      className="pl-7 h-8 text-xs font-semibold tabular-nums"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -265,18 +303,42 @@ export function ModalCatalogoAtividade({
 
           <div className="space-y-1.5">
             <Label htmlFor="valorUnitario" className="text-xs font-semibold text-[#1E293B]">
-              Valor Unitário / Remuneração Base (R$) *
+              Valor Unitário / Remuneração Base *
             </Label>
-            <Input
-              id="valorUnitario"
-              type="number"
-              min="0"
-              step="0.01"
-              value={valorUnitario}
-              onChange={(e) => setValorUnitario(e.target.value)}
-              placeholder="0.00"
-              className={errors.valorUnitario ? 'border-red-500' : ''}
-            />
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#64748B]">
+                R$
+              </span>
+              <Input
+                id="valorUnitario"
+                type="text"
+                inputMode="numeric"
+                value={valorUnitario}
+                onChange={(e) => {
+                  const masked = maskCurrency(e.target.value)
+                  setValorUnitario(masked)
+                  if (errors.valorUnitario) {
+                    setErrors((prev) => {
+                      const copy = { ...prev }
+                      delete copy.valorUnitario
+                      return copy
+                    })
+                  }
+                }}
+                placeholder="0,00"
+                className={`pl-9 text-xs font-semibold tabular-nums ${
+                  errors.valorUnitario ? 'border-red-500' : ''
+                }`}
+              />
+            </div>
+            {valorUnitario && parseCurrencyBRL(valorUnitario) > 0 && (
+              <p className="text-[11px] text-[#64748B] flex items-center justify-between">
+                <span>Valor:</span>
+                <span className="font-semibold text-emerald-700">
+                  {formatBRL(parseCurrencyBRL(valorUnitario))}
+                </span>
+              </p>
+            )}
             {errors.valorUnitario && <p className="text-xs text-red-500">{errors.valorUnitario}</p>}
             <p className="text-[11px] text-[#64748B]">
               Para serviço mensal: valor da mensalidade base. Para plantão/demanda: valor unitário

@@ -47,7 +47,7 @@ import {
 } from '@/services/api'
 import { formatBRL, formatDateBR } from '@/components/StatusBadge'
 import { valorPorExtenso } from '@/lib/extenso'
-import { maskCnpj, maskCpf } from '@/lib/masks'
+import { maskCnpj, maskCpf, maskCurrency, parseCurrencyBRL, formatCurrencyBRL } from '@/lib/masks'
 import {
   ModeloContratoPJ,
   DadosContratoPJ,
@@ -108,7 +108,7 @@ export default function ElaborarContrato() {
   const [nomeCLT, setNomeCLT] = useState('')
   const [cargoFuncaoCLT, setCargoFuncaoCLT] = useState('')
   const [documentoIdCLT, setDocumentoIdCLT] = useState('')
-  const [valorCLT, setValorCLT] = useState<number | string>('')
+  const [valorCLT, setValorCLT] = useState<string>('')
   const [dataInicioCLT, setDataInicioCLT] = useState(new Date().toISOString().split('T')[0])
   const [dataFimCLT, setDataFimCLT] = useState('')
   const [projetoIdCLT, setProjetoIdCLT] = useState('')
@@ -136,7 +136,7 @@ export default function ElaborarContrato() {
   )
 
   // Remuneração PJ
-  const [valorNumericoPJ, setValorNumericoPJ] = useState<number | string>(5000)
+  const [valorNumericoPJ, setValorNumericoPJ] = useState<string>(formatCurrencyBRL(5000))
   const [unidadePlantaoDemanda, setUnidadePlantaoDemanda] = useState('plantão de 12 horas')
   const [modalidadeRemuneracaoCombinada, setModalidadeRemuneracaoCombinada] = useState('mensal')
 
@@ -230,7 +230,7 @@ export default function ElaborarContrato() {
     secretariaOrgao,
     projeto: projetoNome,
     descricaoEscopo,
-    valorNumerico: Number(valorNumericoPJ) || 0,
+    valorNumerico: parseCurrencyBRL(valorNumericoPJ) || 0,
     unidadePlantaoDemanda,
     modalidadeRemuneracaoCombinada,
     itensAdicionais,
@@ -243,7 +243,7 @@ export default function ElaborarContrato() {
 
   // Gerador CLT fallback original
   const gerarTextoContratoCLT = () => {
-    const valorFormatado = formatBRL(Number(valorCLT) || 0)
+    const valorFormatado = formatBRL(parseCurrencyBRL(valorCLT) || 0)
     let clauses = []
     let clauseNum = 1
 
@@ -330,14 +330,14 @@ ${nomeCLT || '[CONTRATADO]'}`
         if (prest.cpf_profissional) setCpfRepresentante(prest.cpf_profissional)
         if (prest.cargo) setAtividadePrincipal(prest.cargo)
         if (prest.remuneracao_base && prest.remuneracao_base > 0) {
-          setValorNumericoPJ(prest.remuneracao_base)
+          setValorNumericoPJ(formatCurrencyBRL(prest.remuneracao_base))
         }
       } else {
         if (prest.nome_colaborador) setNomeCLT(prest.nome_colaborador)
         if (prest.cpf_colaborador) setDocumentoIdCLT(prest.cpf_colaborador)
         if (prest.cargo) setCargoFuncaoCLT(prest.cargo)
         if (prest.remuneracao_base && prest.remuneracao_base > 0) {
-          setValorCLT(prest.remuneracao_base)
+          setValorCLT(formatCurrencyBRL(prest.remuneracao_base))
         }
       }
     }
@@ -352,7 +352,7 @@ ${nomeCLT || '[CONTRATADO]'}`
     if (item) {
       setAtividadePrincipal(item.descricao)
       if (item.valor_unitario && item.valor_unitario > 0) {
-        setValorNumericoPJ(item.valor_unitario)
+        setValorNumericoPJ(formatCurrencyBRL(item.valor_unitario))
       }
       if (item.detalhes_escopo) {
         setDescricaoEscopo(item.detalhes_escopo)
@@ -525,7 +525,7 @@ ${nomeCLT || '[CONTRATADO]'}`
           tipo: 'CLT',
           nome: nomeCLT.trim(),
           cargo_funcao: cargoFuncaoCLT.trim(),
-          valor: Number(valorCLT) || 0,
+          valor: parseCurrencyBRL(valorCLT) || 0,
           data_inicio: new Date(dataInicioCLT).toISOString(),
           data_fim: dataFimCLT ? new Date(dataFimCLT).toISOString() : undefined,
           status: 'ativo',
@@ -546,11 +546,14 @@ ${nomeCLT || '[CONTRATADO]'}`
   // Validação para habilitar botão de próximo
   const podeAvancarPasso2 = () => {
     if (tipo === 'CLT') {
-      return Boolean(nomeCLT.trim() && cargoFuncaoCLT.trim() && Number(valorCLT) > 0)
+      return Boolean(nomeCLT.trim() && cargoFuncaoCLT.trim() && parseCurrencyBRL(valorCLT) > 0)
     }
     // PJ
     return Boolean(
-      razaoSocial.trim() && cnpj.trim() && atividadePrincipal.trim() && Number(valorNumericoPJ) > 0,
+      razaoSocial.trim() &&
+      cnpj.trim() &&
+      atividadePrincipal.trim() &&
+      parseCurrencyBRL(valorNumericoPJ) > 0,
     )
   }
 
@@ -1152,7 +1155,7 @@ ${nomeCLT || '[CONTRATADO]'}`
                     </p>
                   </div>
                   <span className="text-xs font-mono font-bold text-[#1FAF7A] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                    {formatBRL(Number(valorNumericoPJ) || 0)}
+                    {formatBRL(parseCurrencyBRL(valorNumericoPJ) || 0)}
                   </span>
                 </div>
 
@@ -1160,22 +1163,27 @@ ${nomeCLT || '[CONTRATADO]'}`
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold text-[#1E293B]">
                       {modeloPJ === 'plantao_demanda'
-                        ? 'Valor por Unidade / Plantão (R$) *'
-                        : 'Valor Mensal Base (R$) *'}
+                        ? 'Valor por Unidade / Plantão *'
+                        : 'Valor Mensal Base *'}
                     </Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={valorNumericoPJ}
-                      onChange={(e) => setValorNumericoPJ(e.target.value)}
-                      placeholder="0.00"
-                      required
-                    />
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#64748B]">
+                        R$
+                      </span>
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        value={valorNumericoPJ}
+                        onChange={(e) => setValorNumericoPJ(maskCurrency(e.target.value))}
+                        placeholder="0,00"
+                        className="pl-9 text-xs font-bold tabular-nums"
+                        required
+                      />
+                    </div>
                     <p className="text-[11px] text-[#64748B] italic">
                       Valor por extenso automático:{' '}
                       <strong className="text-[#1E293B]">
-                        {valorPorExtenso(Number(valorNumericoPJ) || 0)}
+                        {valorPorExtenso(parseCurrencyBRL(valorNumericoPJ) || 0)}
                       </strong>
                     </p>
                   </div>
@@ -1273,21 +1281,25 @@ ${nomeCLT || '[CONTRATADO]'}`
                               />
                             </div>
                             <div className="sm:col-span-3 space-y-0.5">
-                              <Input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={item.valor}
-                                onChange={(e) =>
-                                  handleUpdateItemAdicional(
-                                    item.id,
-                                    'valor',
-                                    Number(e.target.value) || 0,
-                                  )
-                                }
-                                placeholder="Valor R$"
-                                className="h-8 text-xs bg-white"
-                              />
+                              <div className="relative">
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-[#64748B]">
+                                  R$
+                                </span>
+                                <Input
+                                  type="text"
+                                  inputMode="numeric"
+                                  value={formatCurrencyBRL(item.valor)}
+                                  onChange={(e) =>
+                                    handleUpdateItemAdicional(
+                                      item.id,
+                                      'valor',
+                                      parseCurrencyBRL(e.target.value) || 0,
+                                    )
+                                  }
+                                  placeholder="0,00"
+                                  className="pl-7 h-8 text-xs bg-white font-semibold tabular-nums"
+                                />
+                              </div>
                               <span className="text-[10px] text-slate-500 block truncate">
                                 {valorPorExtenso(item.valor)}
                               </span>
@@ -1504,17 +1516,27 @@ ${nomeCLT || '[CONTRATADO]'}`
 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold text-[#1E293B]">
-                    Salário Bruto CLT (R$) *
+                    Salário Bruto CLT *
                   </Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={valorCLT}
-                    onChange={(e) => setValorCLT(e.target.value)}
-                    placeholder="0.00"
-                    required
-                  />
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#64748B]">
+                      R$
+                    </span>
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      value={valorCLT}
+                      onChange={(e) => setValorCLT(maskCurrency(e.target.value))}
+                      placeholder="0,00"
+                      className="pl-9 text-xs font-bold tabular-nums"
+                      required
+                    />
+                  </div>
+                  {valorCLT && parseCurrencyBRL(valorCLT) > 0 && (
+                    <p className="text-[11px] text-emerald-700 font-semibold">
+                      {formatBRL(parseCurrencyBRL(valorCLT))}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-1.5">

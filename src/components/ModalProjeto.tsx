@@ -28,18 +28,29 @@ import type {
   ConvenioRecord,
 } from '@/types'
 import { Loader2 } from 'lucide-react'
+import { maskCurrency, parseCurrencyBRL, formatCurrencyBRL } from '@/lib/masks'
+import { formatBRL } from '@/components/StatusBadge'
 
 interface ModalProjetoProps {
   open: boolean
   onClose: () => void
   onSuccess: () => void
   projetoToEdit?: ProjetoRecord | null
+  defaultSecretariaId?: string
+  defaultConvenioId?: string
 }
 
-export function ModalProjeto({ open, onClose, onSuccess, projetoToEdit }: ModalProjetoProps) {
+export function ModalProjeto({
+  open,
+  onClose,
+  onSuccess,
+  projetoToEdit,
+  defaultSecretariaId,
+  defaultConvenioId,
+}: ModalProjetoProps) {
   const [nome, setNome] = useState('')
   const [descricao, setDescricao] = useState('')
-  const [valorTotal, setValorTotal] = useState<number | string>('')
+  const [valorTotal, setValorTotal] = useState<string>('')
   const [status, setStatus] = useState<ProjetoStatus>('ativo')
   const [contratosVinculados, setContratosVinculados] = useState<ContratoVinculadoTipo[]>(['CLT'])
   const [parceiro, setParceiro] = useState('')
@@ -47,8 +58,8 @@ export function ModalProjeto({ open, onClose, onSuccess, projetoToEdit }: ModalP
   const [dataFim, setDataFim] = useState('')
   const [secretariaId, setSecretariaId] = useState('')
   const [convenioId, setConvenioId] = useState('')
-  const [valorMensalExecucao, setValorMensalExecucao] = useState<number | string>('')
-  const [valorMensalDespesasAdm, setValorMensalDespesasAdm] = useState<number | string>('')
+  const [valorMensalExecucao, setValorMensalExecucao] = useState<string>('')
+  const [valorMensalDespesasAdm, setValorMensalDespesasAdm] = useState<string>('')
   const [mesesDuracao, setMesesDuracao] = useState<number | string>('6')
   const [secretariasList, setSecretariasList] = useState<SecretariaRecord[]>([])
   const [conveniosList, setConveniosList] = useState<ConvenioRecord[]>([])
@@ -64,7 +75,11 @@ export function ModalProjeto({ open, onClose, onSuccess, projetoToEdit }: ModalP
     if (projetoToEdit) {
       setNome(projetoToEdit.nome || '')
       setDescricao(projetoToEdit.descricao || '')
-      setValorTotal(projetoToEdit.valor_total || '')
+      setValorTotal(
+        projetoToEdit.valor_total !== undefined && projetoToEdit.valor_total !== null
+          ? formatCurrencyBRL(projetoToEdit.valor_total)
+          : '',
+      )
       setStatus(projetoToEdit.status || 'ativo')
 
       const rawContratos = projetoToEdit.contratos_vinculados
@@ -81,10 +96,20 @@ export function ModalProjeto({ open, onClose, onSuccess, projetoToEdit }: ModalP
       setParceiro(projetoToEdit.parceiro || '')
       setDataInicio(projetoToEdit.data_inicio ? projetoToEdit.data_inicio.split('T')[0] : '')
       setDataFim(projetoToEdit.data_fim ? projetoToEdit.data_fim.split('T')[0] : '')
-      setSecretariaId(projetoToEdit.secretaria_id || '')
-      setConvenioId(projetoToEdit.convenio_id || '')
-      setValorMensalExecucao(projetoToEdit.valor_mensal_execucao || '')
-      setValorMensalDespesasAdm(projetoToEdit.valor_mensal_despesas_adm || '')
+      setSecretariaId(projetoToEdit.secretaria_id || defaultSecretariaId || '')
+      setConvenioId(projetoToEdit.convenio_id || defaultConvenioId || '')
+      setValorMensalExecucao(
+        projetoToEdit.valor_mensal_execucao !== undefined &&
+          projetoToEdit.valor_mensal_execucao !== null
+          ? formatCurrencyBRL(projetoToEdit.valor_mensal_execucao)
+          : '',
+      )
+      setValorMensalDespesasAdm(
+        projetoToEdit.valor_mensal_despesas_adm !== undefined &&
+          projetoToEdit.valor_mensal_despesas_adm !== null
+          ? formatCurrencyBRL(projetoToEdit.valor_mensal_despesas_adm)
+          : '',
+      )
       setMesesDuracao(projetoToEdit.meses_duracao || 6)
     } else {
       setNome('')
@@ -95,34 +120,28 @@ export function ModalProjeto({ open, onClose, onSuccess, projetoToEdit }: ModalP
       setParceiro('')
       setDataInicio(new Date().toISOString().split('T')[0])
       setDataFim('')
-      setSecretariaId('')
-      setConvenioId('')
+      setSecretariaId(defaultSecretariaId || '')
+      setConvenioId(defaultConvenioId || '')
       setValorMensalExecucao('')
       setValorMensalDespesasAdm('')
       setMesesDuracao(6)
     }
     setErrors({})
-  }, [projetoToEdit, open])
+  }, [projetoToEdit, defaultSecretariaId, defaultConvenioId, open])
 
   // Recalcula valor total automático quando preenche execução mensal, despesas adm e meses
-  const handleRecalcularTotal = (
-    vExec: number | string,
-    vAdm: number | string,
-    meses: number | string,
-  ) => {
-    const e = Number(vExec) || 0
-    const a = Number(vAdm) || 0
+  const handleRecalcularTotal = (vExecStr: string, vAdmStr: string, meses: number | string) => {
+    const e = parseCurrencyBRL(vExecStr)
+    const a = parseCurrencyBRL(vAdmStr)
     const m = Number(meses) || 1
     if (e > 0 || a > 0) {
-      setValorTotal(((e + a) * m).toFixed(2))
+      setValorTotal(formatCurrencyBRL((e + a) * m))
     }
   }
 
   const toggleContrato = (tipo: ContratoVinculadoTipo) => {
     setContratosVinculados((prev) => {
       if (prev.includes(tipo)) {
-        // Não desmarcar tudo se quiser garantir pelo menos um ou permitir nenhum?
-        // Se permitir desmarcar, pode ficar vazio []. O usuário pode marcar o outro.
         return prev.filter((item) => item !== tipo)
       } else {
         return [...prev, tipo]
@@ -133,7 +152,10 @@ export function ModalProjeto({ open, onClose, onSuccess, projetoToEdit }: ModalP
   const validate = () => {
     const errs: Record<string, string> = {}
     if (!nome.trim()) errs.nome = 'Nome do projeto é obrigatório.'
-    if (!valorTotal || Number(valorTotal) <= 0) errs.valorTotal = 'Informe um valor total válido.'
+    const numTotal = parseCurrencyBRL(valorTotal)
+    if (!valorTotal || isNaN(numTotal) || numTotal <= 0) {
+      errs.valorTotal = 'Informe um valor total válido.'
+    }
     if (contratosVinculados.length === 0) {
       errs.contratosVinculados = 'Selecione ao menos um tipo de contrato (CLT ou PJ).'
     }
@@ -145,21 +167,23 @@ export function ModalProjeto({ open, onClose, onSuccess, projetoToEdit }: ModalP
     e.preventDefault()
     if (!validate()) return
 
+    const numTotal = parseCurrencyBRL(valorTotal)
+    const numExec = valorMensalExecucao ? parseCurrencyBRL(valorMensalExecucao) : undefined
+    const numAdm = valorMensalDespesasAdm ? parseCurrencyBRL(valorMensalDespesasAdm) : undefined
+
     setLoading(true)
     try {
       const payload: Partial<ProjetoRecord> = {
         nome: nome.trim(),
         descricao: descricao.trim() || undefined,
-        valor_total: Number(valorTotal) || 0,
+        valor_total: numTotal,
         status,
         contratos_vinculados: contratosVinculados,
         parceiro: parceiro.trim() || undefined,
         secretaria_id: secretariaId || undefined,
         convenio_id: convenioId || undefined,
-        valor_mensal_execucao: valorMensalExecucao ? Number(valorMensalExecucao) : undefined,
-        valor_mensal_despesas_adm: valorMensalDespesasAdm
-          ? Number(valorMensalDespesasAdm)
-          : undefined,
+        valor_mensal_execucao: numExec,
+        valor_mensal_despesas_adm: numAdm,
         meses_duracao: mesesDuracao ? Number(mesesDuracao) : undefined,
         data_inicio: dataInicio ? new Date(dataInicio).toISOString() : undefined,
         data_fim: dataFim ? new Date(dataFim).toISOString() : undefined,
@@ -273,21 +297,31 @@ export function ModalProjeto({ open, onClose, onSuccess, projetoToEdit }: ModalP
                   htmlFor="valorMensalExecucao"
                   className="text-[11px] font-semibold text-[#475569]"
                 >
-                  Execução Direta Mensal (R$)
+                  Execução Direta Mensal
                 </Label>
-                <Input
-                  id="valorMensalExecucao"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={valorMensalExecucao}
-                  onChange={(e) => {
-                    setValorMensalExecucao(e.target.value)
-                    handleRecalcularTotal(e.target.value, valorMensalDespesasAdm, mesesDuracao)
-                  }}
-                  placeholder="Ex: 440013.38"
-                  className="h-9 text-xs"
-                />
+                <div className="relative">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] font-bold text-[#64748B]">
+                    R$
+                  </span>
+                  <Input
+                    id="valorMensalExecucao"
+                    type="text"
+                    inputMode="numeric"
+                    value={valorMensalExecucao}
+                    onChange={(e) => {
+                      const masked = maskCurrency(e.target.value)
+                      setValorMensalExecucao(masked)
+                      handleRecalcularTotal(masked, valorMensalDespesasAdm, mesesDuracao)
+                    }}
+                    placeholder="0,00"
+                    className="pl-8 h-9 text-xs font-semibold tabular-nums"
+                  />
+                </div>
+                {valorMensalExecucao && parseCurrencyBRL(valorMensalExecucao) > 0 && (
+                  <p className="text-[10px] text-emerald-700 font-semibold truncate">
+                    {formatBRL(parseCurrencyBRL(valorMensalExecucao))}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -295,21 +329,31 @@ export function ModalProjeto({ open, onClose, onSuccess, projetoToEdit }: ModalP
                   htmlFor="valorMensalDespesasAdm"
                   className="text-[11px] font-semibold text-[#475569]"
                 >
-                  Desp. Adm/Oper. Mensal (R$)
+                  Desp. Adm/Oper. Mensal
                 </Label>
-                <Input
-                  id="valorMensalDespesasAdm"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={valorMensalDespesasAdm}
-                  onChange={(e) => {
-                    setValorMensalDespesasAdm(e.target.value)
-                    handleRecalcularTotal(valorMensalExecucao, e.target.value, mesesDuracao)
-                  }}
-                  placeholder="Ex: 42901.31"
-                  className="h-9 text-xs"
-                />
+                <div className="relative">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] font-bold text-[#64748B]">
+                    R$
+                  </span>
+                  <Input
+                    id="valorMensalDespesasAdm"
+                    type="text"
+                    inputMode="numeric"
+                    value={valorMensalDespesasAdm}
+                    onChange={(e) => {
+                      const masked = maskCurrency(e.target.value)
+                      setValorMensalDespesasAdm(masked)
+                      handleRecalcularTotal(valorMensalExecucao, masked, mesesDuracao)
+                    }}
+                    placeholder="0,00"
+                    className="pl-8 h-9 text-xs font-semibold tabular-nums"
+                  />
+                </div>
+                {valorMensalDespesasAdm && parseCurrencyBRL(valorMensalDespesasAdm) > 0 && (
+                  <p className="text-[10px] text-emerald-700 font-semibold truncate">
+                    {formatBRL(parseCurrencyBRL(valorMensalDespesasAdm))}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -330,25 +374,49 @@ export function ModalProjeto({ open, onClose, onSuccess, projetoToEdit }: ModalP
                     )
                   }}
                   placeholder="6"
-                  className="h-9 text-xs"
+                  className="h-9 text-xs font-semibold"
                 />
               </div>
             </div>
 
             <div className="space-y-1.5 pt-1">
               <Label htmlFor="valorTotal" className="text-xs font-semibold text-[#1E293B]">
-                Valor Total Global do Projeto (R$) *
+                Valor Total Global do Projeto *
               </Label>
-              <Input
-                id="valorTotal"
-                type="number"
-                min="0"
-                step="0.01"
-                value={valorTotal}
-                onChange={(e) => setValorTotal(e.target.value)}
-                placeholder="Ex: 2897488.14"
-                className={`font-semibold ${errors.valorTotal ? 'border-red-500' : ''}`}
-              />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#64748B]">
+                  R$
+                </span>
+                <Input
+                  id="valorTotal"
+                  type="text"
+                  inputMode="numeric"
+                  value={valorTotal}
+                  onChange={(e) => {
+                    const masked = maskCurrency(e.target.value)
+                    setValorTotal(masked)
+                    if (errors.valorTotal) {
+                      setErrors((prev) => {
+                        const copy = { ...prev }
+                        delete copy.valorTotal
+                        return copy
+                      })
+                    }
+                  }}
+                  placeholder="0,00"
+                  className={`pl-9 text-xs font-bold tabular-nums ${
+                    errors.valorTotal ? 'border-red-500' : ''
+                  }`}
+                />
+              </div>
+              {valorTotal && parseCurrencyBRL(valorTotal) > 0 && (
+                <p className="text-[11px] text-[#64748B] flex items-center justify-between">
+                  <span>Valor:</span>
+                  <span className="font-semibold text-emerald-700">
+                    {formatBRL(parseCurrencyBRL(valorTotal))}
+                  </span>
+                </p>
+              )}
               {errors.valorTotal && <p className="text-xs text-red-500">{errors.valorTotal}</p>}
             </div>
           </div>

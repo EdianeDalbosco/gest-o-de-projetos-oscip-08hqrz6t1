@@ -21,6 +21,8 @@ import {
 import { createEmpenho, updateEmpenho } from '@/services/api'
 import type { EmpenhoRecord, EmpenhoStatus, SecretariaRecord } from '@/types'
 import { Loader2 } from 'lucide-react'
+import { maskCurrency, parseCurrencyBRL, formatCurrencyBRL } from '@/lib/masks'
+import { formatBRL } from '@/components/StatusBadge'
 
 interface ModalEmpenhoProps {
   open: boolean
@@ -46,7 +48,7 @@ export function ModalEmpenho({
   const [selectedSecId, setSelectedSecId] = useState<string>(secretariaId)
   const [numero, setNumero] = useState('')
   const [descricao, setDescricao] = useState('')
-  const [valor, setValor] = useState<number | string>('')
+  const [valor, setValor] = useState<string>('')
   const [data, setData] = useState('')
   const [status, setStatus] = useState<EmpenhoStatus>('reservado')
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -57,7 +59,11 @@ export function ModalEmpenho({
       setSelectedSecId(empenhoToEdit.secretaria_id || secretariaId)
       setNumero(empenhoToEdit.numero || '')
       setDescricao(empenhoToEdit.descricao || '')
-      setValor(empenhoToEdit.valor ?? '')
+      setValor(
+        empenhoToEdit.valor !== undefined && empenhoToEdit.valor !== null
+          ? formatCurrencyBRL(empenhoToEdit.valor)
+          : '',
+      )
       setData(empenhoToEdit.data ? empenhoToEdit.data.split('T')[0] : '')
       setStatus(empenhoToEdit.status || 'reservado')
     } else {
@@ -77,7 +83,8 @@ export function ModalEmpenho({
     const errs: Record<string, string> = {}
     if (!selectedSecId) errs.secretaria_id = 'A secretaria responsável é obrigatória.'
     if (!numero.trim()) errs.numero = 'O número do empenho é obrigatório (ex: 2024-001).'
-    if (valor === '' || Number(valor) <= 0) {
+    const numValor = parseCurrencyBRL(valor)
+    if (!valor || isNaN(numValor) || numValor <= 0) {
       errs.valor = 'Informe um valor de empenho válido e positivo.'
     }
     setErrors(errs)
@@ -88,6 +95,8 @@ export function ModalEmpenho({
     e.preventDefault()
     if (!validate()) return
 
+    const numValor = parseCurrencyBRL(valor)
+
     setLoading(true)
     try {
       const payload: Partial<EmpenhoRecord> = {
@@ -95,7 +104,7 @@ export function ModalEmpenho({
         convenio_id: convenioId || undefined,
         numero: numero.trim(),
         descricao: descricao.trim() || undefined,
-        valor: Number(valor),
+        valor: numValor,
         data: data ? new Date(data).toISOString() : undefined,
         status,
       }
@@ -180,18 +189,42 @@ export function ModalEmpenho({
 
             <div className="space-y-1.5">
               <Label htmlFor="emp-valor" className="text-xs font-semibold text-[#1E293B]">
-                Valor Empenhado (R$) *
+                Valor Empenhado *
               </Label>
-              <Input
-                id="emp-valor"
-                type="number"
-                min="0"
-                step="0.01"
-                value={valor}
-                onChange={(e) => setValor(e.target.value)}
-                placeholder="0.00"
-                className={errors.valor ? 'border-red-500' : ''}
-              />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#64748B]">
+                  R$
+                </span>
+                <Input
+                  id="emp-valor"
+                  type="text"
+                  inputMode="numeric"
+                  value={valor}
+                  onChange={(e) => {
+                    const masked = maskCurrency(e.target.value)
+                    setValor(masked)
+                    if (errors.valor) {
+                      setErrors((prev) => {
+                        const copy = { ...prev }
+                        delete copy.valor
+                        return copy
+                      })
+                    }
+                  }}
+                  placeholder="0,00"
+                  className={`pl-9 text-xs font-semibold tabular-nums ${
+                    errors.valor ? 'border-red-500' : ''
+                  }`}
+                />
+              </div>
+              {valor && parseCurrencyBRL(valor) > 0 && (
+                <p className="text-[11px] text-[#64748B] flex items-center justify-between">
+                  <span>Valor:</span>
+                  <span className="font-semibold text-emerald-700">
+                    {formatBRL(parseCurrencyBRL(valor))}
+                  </span>
+                </p>
+              )}
               {errors.valor && <p className="text-xs text-red-500">{errors.valor}</p>}
             </div>
           </div>

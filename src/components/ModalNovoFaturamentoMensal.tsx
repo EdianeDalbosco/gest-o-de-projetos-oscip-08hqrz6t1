@@ -39,6 +39,7 @@ import type {
 } from '@/types'
 import { formatBRL } from '@/components/StatusBadge'
 import { Plus, Trash2, Loader2, Calculator } from 'lucide-react'
+import { maskCurrency, parseCurrencyBRL, formatCurrencyBRL } from '@/lib/masks'
 
 interface ModalNovoFaturamentoMensalProps {
   open: boolean
@@ -73,7 +74,7 @@ export function ModalNovoFaturamentoMensal({
   const [itensCLT, setItensCLT] = useState<FaturamentoItemCLT[]>([])
 
   // Despesas Administrativas
-  const [valorDespesasAdm, setValorDespesasAdm] = useState<number | string>(42901.31)
+  const [valorDespesasAdm, setValorDespesasAdm] = useState<string>(formatCurrencyBRL(42901.31))
 
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -341,7 +342,7 @@ export function ModalNovoFaturamentoMensal({
   const totalExecucaoPJ = itensPJ.reduce((s, it) => s + (Number(it.valor) || 0), 0)
   const totalExecucaoCLT = itensCLT.reduce((s, it) => s + (Number(it.valorTotal) || 0), 0)
   const totalExecucaoDireta = totalExecucaoPJ + totalExecucaoCLT
-  const totalDespesasAdm = Number(valorDespesasAdm) || 0
+  const totalDespesasAdm = parseCurrencyBRL(valorDespesasAdm) || 0
   const valorTotalGeral = totalExecucaoDireta + totalDespesasAdm
 
   // Agrupamento por Atividade (Aba "TOTAL POR ATIVIDADE PT")
@@ -916,14 +917,20 @@ export function ModalNovoFaturamentoMensal({
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <Label className="text-xs font-semibold text-[#475569]">Valor Rateio (R$):</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={valorDespesasAdm}
-                onChange={(e) => setValorDespesasAdm(e.target.value)}
-                className="w-36 h-8 text-xs font-mono font-bold bg-white"
-              />
+              <Label className="text-xs font-semibold text-[#475569]">Valor Rateio:</Label>
+              <div className="relative">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-[#64748B]">
+                  R$
+                </span>
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  value={valorDespesasAdm}
+                  onChange={(e) => setValorDespesasAdm(maskCurrency(e.target.value))}
+                  placeholder="0,00"
+                  className="pl-8 w-36 h-8 text-xs font-bold bg-white tabular-nums"
+                />
+              </div>
             </div>
           </div>
 

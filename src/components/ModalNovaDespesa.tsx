@@ -20,6 +20,8 @@ import {
 import { createDespesa } from '@/services/api'
 import type { DespesaCategoria } from '@/types'
 import { Loader2 } from 'lucide-react'
+import { maskCurrency, parseCurrencyBRL, formatCurrencyBRL } from '@/lib/masks'
+import { formatBRL } from '@/components/StatusBadge'
 
 interface ModalNovaDespesaProps {
   open: boolean
@@ -30,7 +32,7 @@ interface ModalNovaDespesaProps {
 export function ModalNovaDespesa({ open, onClose, onSuccess }: ModalNovaDespesaProps) {
   const [categoria, setCategoria] = useState<DespesaCategoria>('Operacional')
   const [descricao, setDescricao] = useState('')
-  const [valor, setValor] = useState<number | string>('')
+  const [valor, setValor] = useState<string>('')
   const [data, setData] = useState(new Date().toISOString().split('T')[0])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
@@ -38,7 +40,10 @@ export function ModalNovaDespesa({ open, onClose, onSuccess }: ModalNovaDespesaP
   const validate = () => {
     const errs: Record<string, string> = {}
     if (!descricao.trim()) errs.descricao = 'Descrição da despesa é obrigatória.'
-    if (!valor || Number(valor) <= 0) errs.valor = 'Informe um valor válido.'
+    const numValor = parseCurrencyBRL(valor)
+    if (!valor || isNaN(numValor) || numValor <= 0) {
+      errs.valor = 'Informe um valor válido.'
+    }
     if (!data) errs.data = 'Data é obrigatória.'
     setErrors(errs)
     return Object.keys(errs).length === 0
@@ -48,12 +53,14 @@ export function ModalNovaDespesa({ open, onClose, onSuccess }: ModalNovaDespesaP
     e.preventDefault()
     if (!validate()) return
 
+    const numValor = parseCurrencyBRL(valor)
+
     setLoading(true)
     try {
       await createDespesa({
         categoria,
         descricao: descricao.trim(),
-        valor: Number(valor),
+        valor: numValor,
         data: new Date(data).toISOString(),
       })
 
@@ -123,24 +130,48 @@ export function ModalNovaDespesa({ open, onClose, onSuccess }: ModalNovaDespesaP
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="valor" className="text-xs font-semibold text-[#1E293B]">
-                Valor Pago (R$) *
+                Valor *
               </Label>
-              <Input
-                id="valor"
-                type="number"
-                min="0"
-                step="0.01"
-                value={valor}
-                onChange={(e) => setValor(e.target.value)}
-                placeholder="0.00"
-                className={errors.valor ? 'border-red-500' : ''}
-              />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#64748B]">
+                  R$
+                </span>
+                <Input
+                  id="valor"
+                  type="text"
+                  inputMode="numeric"
+                  value={valor}
+                  onChange={(e) => {
+                    const masked = maskCurrency(e.target.value)
+                    setValor(masked)
+                    if (errors.valor) {
+                      setErrors((prev) => {
+                        const copy = { ...prev }
+                        delete copy.valor
+                        return copy
+                      })
+                    }
+                  }}
+                  placeholder="0,00"
+                  className={`pl-9 text-xs font-semibold tabular-nums ${
+                    errors.valor ? 'border-red-500' : ''
+                  }`}
+                />
+              </div>
+              {valor && parseCurrencyBRL(valor) > 0 && (
+                <p className="text-[11px] text-[#64748B] flex items-center justify-between">
+                  <span>Valor:</span>
+                  <span className="font-semibold text-emerald-700">
+                    {formatBRL(parseCurrencyBRL(valor))}
+                  </span>
+                </p>
+              )}
               {errors.valor && <p className="text-xs text-red-500">{errors.valor}</p>}
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="data" className="text-xs font-semibold text-[#1E293B]">
-                Data do Desembolso *
+                Data da Despesa *
               </Label>
               <Input
                 id="data"
@@ -151,7 +182,6 @@ export function ModalNovaDespesa({ open, onClose, onSuccess }: ModalNovaDespesaP
               />
             </div>
           </div>
-
           <DialogFooter className="pt-3 gap-2">
             <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
               Cancelar

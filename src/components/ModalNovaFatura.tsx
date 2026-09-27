@@ -20,6 +20,8 @@ import {
 import { createFatura, getProjetos, getContratos, getPlanosTrabalho } from '@/services/api'
 import type { ProjetoRecord, ContratoRecord, PlanoTrabalhoRecord, FaturaStatus } from '@/types'
 import { Loader2 } from 'lucide-react'
+import { maskCurrency, parseCurrencyBRL, formatCurrencyBRL } from '@/lib/masks'
+import { formatBRL } from '@/components/StatusBadge'
 
 interface ModalNovaFaturaProps {
   open: boolean
@@ -32,7 +34,7 @@ export function ModalNovaFatura({ open, onClose, onSuccess }: ModalNovaFaturaPro
   const [projetoId, setProjetoId] = useState('')
   const [contratoId, setContratoId] = useState('')
   const [planoTrabalhoId, setPlanoTrabalhoId] = useState('')
-  const [valor, setValor] = useState<number | string>('')
+  const [valor, setValor] = useState<string>('')
   const [dataEmissao, setDataEmissao] = useState(new Date().toISOString().split('T')[0])
   const [dataVencimento, setDataVencimento] = useState('')
   const [status, setStatus] = useState<FaturaStatus>('emitida')
@@ -73,7 +75,10 @@ export function ModalNovaFatura({ open, onClose, onSuccess }: ModalNovaFaturaPro
   const validate = () => {
     const errs: Record<string, string> = {}
     if (!numero.trim()) errs.numero = 'Número da fatura é obrigatório.'
-    if (!valor || Number(valor) <= 0) errs.valor = 'Informe um valor válido.'
+    const numValor = parseCurrencyBRL(valor)
+    if (!valor || isNaN(numValor) || numValor <= 0) {
+      errs.valor = 'Informe um valor válido.'
+    }
     if (!dataEmissao) errs.dataEmissao = 'Data de emissão é obrigatória.'
     if (!dataVencimento) errs.dataVencimento = 'Data de vencimento é obrigatória.'
     setErrors(errs)
@@ -84,6 +89,8 @@ export function ModalNovaFatura({ open, onClose, onSuccess }: ModalNovaFaturaPro
     e.preventDefault()
     if (!validate()) return
 
+    const numValor = parseCurrencyBRL(valor)
+
     setLoading(true)
     try {
       await createFatura({
@@ -92,7 +99,7 @@ export function ModalNovaFatura({ open, onClose, onSuccess }: ModalNovaFaturaPro
         contrato_id: contratoId && contratoId !== 'none' ? contratoId : undefined,
         plano_trabalho_id:
           planoTrabalhoId && planoTrabalhoId !== 'none' ? planoTrabalhoId : undefined,
-        valor: Number(valor),
+        valor: numValor,
         data_emissao: new Date(dataEmissao).toISOString(),
         data_vencimento: new Date(dataVencimento).toISOString(),
         status,
@@ -142,23 +149,46 @@ export function ModalNovaFatura({ open, onClose, onSuccess }: ModalNovaFaturaPro
               />
               {errors.numero && <p className="text-xs text-red-500">{errors.numero}</p>}
             </div>
-
             <div className="space-y-1.5">
               <Label htmlFor="valor" className="text-xs font-semibold text-[#1E293B]">
-                Valor da Fatura (R$) *
+                Valor da Fatura *
               </Label>
-              <Input
-                id="valor"
-                type="number"
-                min="0"
-                step="0.01"
-                value={valor}
-                onChange={(e) => setValor(e.target.value)}
-                placeholder="0.00"
-                className={errors.valor ? 'border-red-500' : ''}
-              />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#64748B]">
+                  R$
+                </span>
+                <Input
+                  id="valor"
+                  type="text"
+                  inputMode="numeric"
+                  value={valor}
+                  onChange={(e) => {
+                    const masked = maskCurrency(e.target.value)
+                    setValor(masked)
+                    if (errors.valor) {
+                      setErrors((prev) => {
+                        const copy = { ...prev }
+                        delete copy.valor
+                        return copy
+                      })
+                    }
+                  }}
+                  placeholder="0,00"
+                  className={`pl-9 text-xs font-semibold tabular-nums ${
+                    errors.valor ? 'border-red-500' : ''
+                  }`}
+                />
+              </div>
+              {valor && parseCurrencyBRL(valor) > 0 && (
+                <p className="text-[11px] text-[#64748B] flex items-center justify-between">
+                  <span>Valor:</span>
+                  <span className="font-semibold text-emerald-700">
+                    {formatBRL(parseCurrencyBRL(valor))}
+                  </span>
+                </p>
+              )}
               {errors.valor && <p className="text-xs text-red-500">{errors.valor}</p>}
-            </div>
+            </div>{' '}
           </div>
 
           <div className="space-y-1.5">
