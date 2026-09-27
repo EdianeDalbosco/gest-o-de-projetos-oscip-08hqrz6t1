@@ -62,7 +62,8 @@ const navSections: NavSection[] = [
   {
     title: 'Contratos & Equipe',
     items: [
-      { label: 'Contratos CLT/PJ', path: '/contratos', icon: Users2 },
+      { label: 'Prestadores & Colaboradores', path: '/prestadores', icon: Users2 },
+      { label: 'Contratos CLT/PJ', path: '/contratos', icon: FileSignature },
       { label: 'Atividades Prestadores', path: '/atividades', icon: CalendarCheck2 },
       { label: 'Elaborar Contrato', path: '/contratos/novo/elaborar', icon: FileSignature },
     ],
@@ -86,6 +87,7 @@ export default function Layout() {
     if (path === '/convenios') return 'Instrumentos Municipais'
     if (path === '/faturamento') return 'Faturamento & Faturas'
     if (path === '/financeiro') return 'Gestão Financeira Mensal'
+    if (path === '/prestadores') return 'Prestadores & Colaboradores'
     if (path === '/contratos/novo/elaborar') return 'Elaboração de Contrato'
     if (path.startsWith('/contratos/') && path !== '/contratos') return 'Detalhes do Contrato'
     if (path === '/contratos') return 'Gestão de Contratos'

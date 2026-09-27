@@ -22,24 +22,35 @@ import {
 } from '@/components/ui/select'
 import { StatusBadge, formatBRL, formatDateBR } from '@/components/StatusBadge'
 import { ModalNovaDespesa } from '@/components/ModalNovaDespesa'
-import { getFaturas, getDespesas } from '@/services/api'
+import { getFaturas, getDespesas, getFaturamentosMensais } from '@/services/api'
 import { useRealtime } from '@/hooks/use-realtime'
-import type { FaturaRecord, DespesaRecord, DespesaCategoria } from '@/types'
+import type {
+  FaturaRecord,
+  DespesaRecord,
+  DespesaCategoria,
+  FaturamentoMensalRecord,
+} from '@/types'
 
 export default function GestaoFinanceira() {
   const [faturas, setFaturas] = useState<FaturaRecord[]>([])
+  const [faturamentosMensais, setFaturamentosMensais] = useState<FaturamentoMensalRecord[]>([])
   const [despesas, setDespesas] = useState<DespesaRecord[]>([])
-  const [mesSelecionado, setMesSelecionado] = useState<number>(4) // 0-based: 4 = Maio
-  const [anoSelecionado, setAnoSelecionado] = useState<number>(2024)
+  const [mesSelecionado, setMesSelecionado] = useState<number>(7) // 0-based: 7 = Agosto
+  const [anoSelecionado, setAnoSelecionado] = useState<number>(2026)
   const [categoriaFilter, setCategoriaFilter] = useState<string>('todos')
   const [modalOpen, setModalOpen] = useState(false)
   const [loading, setLoading] = useState(true)
 
   const fetchData = async () => {
     try {
-      const [fatList, despList] = await Promise.all([getFaturas(), getDespesas()])
+      const [fatList, despList, fatMensais] = await Promise.all([
+        getFaturas(),
+        getDespesas(),
+        getFaturamentosMensais(),
+      ])
       setFaturas(fatList)
       setDespesas(despList)
+      setFaturamentosMensais(fatMensais)
     } catch (e) {
       console.error(e)
     } finally {
@@ -53,10 +64,11 @@ export default function GestaoFinanceira() {
 
   useRealtime('faturas', () => fetchData())
   useRealtime('despesas', () => fetchData())
+  useRealtime('faturamentos_mensais', () => fetchData())
 
-  // Filtered by Selected Month/Year
+  // Filtered by Selected Month/Year: soma faturas pagas + faturamentos mensais liquidados do Termo de Parceria
   const receitasMes = useMemo(() => {
-    return faturas
+    const faturasPagas = faturas
       .filter((f) => {
         if (!f.data_emissao) return false
         const d = new Date(f.data_emissao)
@@ -67,7 +79,32 @@ export default function GestaoFinanceira() {
         )
       })
       .reduce((s, f) => s + (Number(f.valor) || 0), 0)
-  }, [faturas, mesSelecionado, anoSelecionado])
+
+    const mensaisLiquidados = faturamentosMensais
+      .filter((m) => {
+        return m.ano === anoSelecionado && m.mes === mesSelecionado + 1
+      })
+      .reduce((s, m) => s + (Number(m.valor_total) || 0), 0)
+
+    return faturasPagas + mensaisLiquidados
+  }, [faturas, faturamentosMensais, mesSelecionado, anoSelecionado])
+
+  const faturamentoMesTotal = useMemo(() => {
+    // Total faturado no mês (independente de já liquidado ou a receber)
+    const faturasTotal = faturas
+      .filter((f) => {
+        if (!f.data_emissao) return false
+        const d = new Date(f.data_emissao)
+        return d.getUTCFullYear() === anoSelecionado && d.getUTCMonth() === mesSelecionado
+      })
+      .reduce((s, f) => s + (Number(f.valor) || 0), 0)
+
+    const mensaisTotal = faturamentosMensais
+      .filter((m) => m.ano === anoSelecionado && m.mes === mesSelecionado + 1)
+      .reduce((s, m) => s + (Number(m.valor_total) || 0), 0)
+
+    return faturasTotal + mensaisTotal
+  }, [faturas, faturamentosMensais, mesSelecionado, anoSelecionado])
 
   const despesasMes = useMemo(() => {
     return despesas
@@ -117,7 +154,7 @@ export default function GestaoFinanceira() {
       data: string
     }[] = []
 
-    // Receitas
+    // Receitas de faturas avulsas
     faturas
       .filter((f) => {
         if (!f.data_emissao) return false
@@ -128,10 +165,24 @@ export default function GestaoFinanceira() {
         list.push({
           id: `rec-${f.id}`,
           tipo: 'receita',
-          categoria: 'Faturamento',
+          categoria: 'Faturamento Avulso',
           descricao: `Fatura ${f.numero} - ${f.expand?.projeto_id?.nome || 'Institucional'}`,
           valor: f.valor,
           data: f.data_emissao,
+        })
+      })
+
+    // Receitas de Faturamentos Mensais do Termo de Parceria
+    faturamentosMensais
+      .filter((m) => m.ano === anoSelecionado && m.mes === mesSelecionado + 1)
+      .forEach((m) => {
+        list.push({
+          id: `fat-m-${m.id}`,
+          tipo: 'receita',
+          categoria: 'Termo de Parceria',
+          descricao: `Faturamento Mensal ${m.numero_sequencial} (${m.periodo}) - ${m.expand?.secretaria_id?.nome || 'Saúde'}`,
+          valor: m.valor_total,
+          data: m.created || new Date().toISOString(),
         })
       })
 
@@ -218,9 +269,9 @@ export default function GestaoFinanceira() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="2023">2023</SelectItem>
               <SelectItem value="2024">2024</SelectItem>
               <SelectItem value="2025">2025</SelectItem>
+              <SelectItem value="2026">2026</SelectItem>
             </SelectContent>
           </Select>
 

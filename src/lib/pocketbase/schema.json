@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-27T22:43:16.401Z",
+  "generatedAt": "2026-09-27T23:00:38.518Z",
   "collections": [
     {
       "name": "users",
@@ -124,6 +124,38 @@
           "required": false,
           "system": false,
           "selectValues": ["CLT", "PJ"]
+        },
+        {
+          "name": "secretaria_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "secretarias"
+        },
+        {
+          "name": "convenio_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "convenios"
+        },
+        {
+          "name": "valor_mensal_execucao",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "valor_mensal_despesas_adm",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "meses_duracao",
+          "type": "number",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [
@@ -547,6 +579,12 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "anexo_pdf",
+          "type": "file",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [
@@ -842,6 +880,393 @@
         "CREATE INDEX idx_empenhos_convenio ON empenhos (convenio_id)",
         "CREATE INDEX idx_empenhos_status ON empenhos (status)",
         "CREATE INDEX idx_empenhos_data ON empenhos (data)"
+      ]
+    },
+    {
+      "name": "prestadores_colaboradores",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "tipo",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["CLT", "PJ"]
+        },
+        {
+          "name": "razao_social",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "cnpj",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "profissional",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "cpf_profissional",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "natureza_juridica",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "endereco",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "nome_colaborador",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "cpf_colaborador",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "codigo_consisa",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "cargo",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "setor",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "situacao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "remuneracao_base",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "observacoes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_prestadores_tipo ON prestadores_colaboradores (tipo)",
+        "CREATE INDEX idx_prestadores_cnpj ON prestadores_colaboradores (cnpj)",
+        "CREATE INDEX idx_prestadores_cpf ON prestadores_colaboradores (cpf_colaborador)"
+      ]
+    },
+    {
+      "name": "catalogo_atividades",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "projeto_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "projetos"
+        },
+        {
+          "name": "tipo_vinculo",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["CLT", "PJ"]
+        },
+        {
+          "name": "tipo_execucao",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Mensal", "Serviço Mensal", "Conforme Demanda", "Plantão"]
+        },
+        {
+          "name": "descricao",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "valor_unitario",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "proventos",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "provisao",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "encargos",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "detalhes_escopo",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_catalogo_projeto ON catalogo_atividades (projeto_id)",
+        "CREATE INDEX idx_catalogo_tipo ON catalogo_atividades (tipo_vinculo)"
+      ]
+    },
+    {
+      "name": "faturamentos_mensais",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "numero_sequencial",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "convenio_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "convenios"
+        },
+        {
+          "name": "secretaria_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "secretarias"
+        },
+        {
+          "name": "projeto_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "projetos"
+        },
+        {
+          "name": "tipo_faturamento",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["PJ", "CLT", "CONSOLIDADO"]
+        },
+        {
+          "name": "competencia",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "periodo",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "mes",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "ano",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "valor_execucao_direta",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "valor_execucao_clt",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "valor_execucao_pj",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "valor_despesas_adm",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "valor_total",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "status_nf",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["aguardando_nf", "nf_emitida", "liquidado"]
+        },
+        {
+          "name": "numero_nf",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "data_emissao_nf",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "dados_resumo",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "itens_detalhamento_pj",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "itens_detalhamento_clt",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "itens_por_atividade",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "rateio_despesas_adm",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "observacoes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_fat_mensal_num ON faturamentos_mensais (numero_sequencial)",
+        "CREATE INDEX idx_fat_mensal_conv ON faturamentos_mensais (convenio_id)",
+        "CREATE INDEX idx_fat_mensal_sec ON faturamentos_mensais (secretaria_id)",
+        "CREATE INDEX idx_fat_mensal_periodo ON faturamentos_mensais (ano, mes)"
       ]
     }
   ]

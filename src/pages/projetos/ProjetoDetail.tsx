@@ -25,15 +25,24 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { StatusBadge, formatBRL, formatDateBR } from '@/components/StatusBadge'
 import { ModalProjeto } from '@/components/ModalProjeto'
 import { ModalNovaAtividade } from '@/components/ModalNovaAtividade'
+import { ModalCatalogoAtividade } from '@/components/ModalCatalogoAtividade'
 import {
   getProjetoById,
   getAtividadesByProjeto,
   getFaturasByProjeto,
   getContratos,
   updateAtividade,
+  getCatalogoAtividades,
+  deleteCatalogoAtividade,
 } from '@/services/api'
 import { useRealtime } from '@/hooks/use-realtime'
-import type { ProjetoRecord, AtividadeRecord, FaturaRecord, ContratoRecord } from '@/types'
+import type {
+  ProjetoRecord,
+  AtividadeRecord,
+  FaturaRecord,
+  ContratoRecord,
+  CatalogoAtividadeRecord,
+} from '@/types'
 
 export default function ProjetoDetail() {
   const { id } = useParams<{ id: string }>()
@@ -43,24 +52,31 @@ export default function ProjetoDetail() {
   const [atividades, setAtividades] = useState<AtividadeRecord[]>([])
   const [faturas, setFaturas] = useState<FaturaRecord[]>([])
   const [equipe, setEquipe] = useState<ContratoRecord[]>([])
+  const [catalogo, setCatalogo] = useState<CatalogoAtividadeRecord[]>([])
   const [loading, setLoading] = useState(true)
 
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [atividadeModalOpen, setAtividadeModalOpen] = useState(false)
+  const [catalogoModalOpen, setCatalogoModalOpen] = useState(false)
+  const [editingCatalogoAtiv, setEditingCatalogoAtiv] = useState<CatalogoAtividadeRecord | null>(
+    null,
+  )
   const [selectedAtividade, setSelectedAtividade] = useState<AtividadeRecord | null>(null)
 
   const fetchData = async () => {
     if (!id) return
     try {
-      const [proj, ativList, fatList, allContratos] = await Promise.all([
+      const [proj, ativList, fatList, allContratos, catList] = await Promise.all([
         getProjetoById(id),
         getAtividadesByProjeto(id),
         getFaturasByProjeto(id),
         getContratos(),
+        getCatalogoAtividades(id),
       ])
       setProjeto(proj)
       setAtividades(ativList)
       setFaturas(fatList)
+      setCatalogo(catList)
       // vinculados a este projeto
       setEquipe(allContratos.filter((c) => c.projeto_id === id))
     } catch (err) {
@@ -77,6 +93,7 @@ export default function ProjetoDetail() {
   useRealtime('projetos', () => fetchData())
   useRealtime('atividades', () => fetchData())
   useRealtime('faturas', () => fetchData())
+  useRealtime('catalogo_atividades', () => fetchData())
 
   const handleApproveAtividade = async (ativId: string) => {
     try {
@@ -116,6 +133,17 @@ export default function ProjetoDetail() {
         </Button>
       </div>
     )
+  }
+
+  const handleDeleteCatalogo = async (catId: string, desc: string) => {
+    if (window.confirm(`Deseja remover "${desc}" do catálogo de atividades deste projeto?`)) {
+      try {
+        await deleteCatalogoAtividade(catId)
+        fetchData()
+      } catch {
+        alert('Erro ao excluir atividade do catálogo.')
+      }
+    }
   }
 
   const totalFaturado = faturas
@@ -192,42 +220,197 @@ export default function ProjetoDetail() {
         </div>
       </div>
 
-      {/* Tabs Principais (3 Abas: Visão Geral, Atividades, Financeiro) */}
-      <Tabs defaultValue="visao-geral" className="space-y-4">
+      {/* Tabs Principais: Visão Geral, Catálogo de Atividades (Anexo I PT), Entregas, Financeiro */}
+      <Tabs defaultValue="catalogo" className="space-y-4">
         <TabsList className="bg-white border border-[#E2E8F0] p-1 h-11 rounded-lg">
+          <TabsTrigger
+            value="catalogo"
+            className="text-xs font-semibold px-4 data-[state=active]:bg-[#1FAF7A] data-[state=active]:text-white"
+          >
+            Catálogo de Atividades ({catalogo.length})
+          </TabsTrigger>
           <TabsTrigger
             value="visao-geral"
             className="text-xs font-semibold px-4 data-[state=active]:bg-[#1FAF7A] data-[state=active]:text-white"
           >
-            1. Visão Geral
+            Visão Geral & Custos
           </TabsTrigger>
           <TabsTrigger
             value="atividades"
             className="text-xs font-semibold px-4 data-[state=active]:bg-[#1FAF7A] data-[state=active]:text-white"
           >
-            2. Atividades ({atividades.length})
+            Entregas/Horas ({atividades.length})
           </TabsTrigger>
           <TabsTrigger
             value="financeiro"
             className="text-xs font-semibold px-4 data-[state=active]:bg-[#1FAF7A] data-[state=active]:text-white"
           >
-            3. Financeiro ({faturas.length})
+            Financeiro ({faturas.length})
           </TabsTrigger>
         </TabsList>
 
+        {/* ABA CATÁLOGO DE ATIVIDADES (ANEXO I PT) */}
+        <TabsContent value="catalogo" className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-[#E2E8F0]">
+            <div>
+              <h3 className="text-sm font-bold text-[#1E293B]">
+                Catálogo de Atividades Previstas (Anexo I PT)
+              </h3>
+              <p className="text-xs text-[#64748B]">
+                Quadro de atividades para execução direta (CLT / PJ, serviço mensal ou
+                plantões/demandas) com remuneração de referência.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => {
+                setEditingCatalogoAtiv(null)
+                setCatalogoModalOpen(true)
+              }}
+              className="bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs font-semibold shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5 mr-1" />
+              Nova Atividade no Catálogo
+            </Button>
+          </div>
+
+          <Card className="border-[#E2E8F0] overflow-hidden">
+            <CardContent className="p-0">
+              {catalogo.length === 0 ? (
+                <div className="text-center py-12 text-xs text-[#64748B] space-y-2">
+                  <p>Nenhuma atividade cadastrada no catálogo deste projeto.</p>
+                  <p className="text-[11px] text-[#94A3B8]">
+                    Cadastre as atividades previstas no Plano de Trabalho clicando em &ldquo;Nova
+                    Atividade no Catálogo&rdquo;.
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-[#E2E8F0] bg-slate-50 text-[#64748B] font-semibold">
+                        <th className="py-3 px-4">Vínculo</th>
+                        <th className="py-3 px-4">Atividade / Função</th>
+                        <th className="py-3 px-4">Tipo de Execução</th>
+                        <th className="py-3 px-4">Remuneração / Valor Unitário</th>
+                        <th className="py-3 px-4">Composição de Custo CLT</th>
+                        <th className="py-3 px-4 text-right">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#F1F5F9]">
+                      {catalogo.map((cat) => (
+                        <tr key={cat.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="py-3 px-4">
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
+                                cat.tipo_vinculo === 'CLT'
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  : 'bg-sky-50 text-sky-700 border border-sky-200'
+                              }`}
+                            >
+                              {cat.tipo_vinculo}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="font-bold text-[#1E293B] block">{cat.descricao}</span>
+                            {cat.detalhes_escopo && (
+                              <span className="text-[11px] text-[#64748B] line-clamp-1">
+                                {cat.detalhes_escopo}
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 font-medium text-[#475569]">
+                            {cat.tipo_execucao}
+                          </td>
+                          <td className="py-3 px-4 font-bold text-[#1E293B] tabular-nums">
+                            {formatBRL(cat.valor_unitario)}
+                            {cat.tipo_execucao.includes('Plantão') ||
+                            cat.tipo_execucao.includes('Demanda') ? (
+                              <span className="text-[10px] text-[#64748B] font-normal ml-1">
+                                / unidade
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-[#64748B] font-normal ml-1">
+                                / mês
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-[11px] text-[#64748B]">
+                            {cat.tipo_vinculo === 'CLT' && (cat.proventos || cat.encargos) ? (
+                              <span>
+                                Prov: {cat.proventos ? formatBRL(cat.proventos) : '—'} | Enc:{' '}
+                                {cat.encargos ? formatBRL(cat.encargos) : '—'}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setEditingCatalogoAtiv(cat)
+                                  setCatalogoModalOpen(true)
+                                }}
+                                className="h-7 w-7 p-0 text-[#64748B] hover:text-[#1FAF7A]"
+                                title="Editar Atividade"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleDeleteCatalogo(cat.id, cat.descricao)}
+                                className="h-7 w-7 p-0 text-[#64748B] hover:text-red-600"
+                                title="Excluir Atividade"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
         {/* ABA 1: VISÃO GERAL */}
         <TabsContent value="visao-geral" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             <Card className="border-[#E2E8F0]">
               <CardContent className="p-5">
                 <span className="text-xs font-semibold text-[#64748B] uppercase">
-                  Valor Orçado Total
+                  Valor Total do Projeto
                 </span>
                 <p className="text-2xl font-bold text-[#1E293B] mt-2 tabular-nums">
                   {formatBRL(projeto.valor_total)}
                 </p>
                 <span className="text-xs text-[#94A3B8] mt-1 block">
-                  Aporte aprovado em instrumento
+                  {projeto.meses_duracao
+                    ? `${projeto.meses_duracao} meses de vigência`
+                    : 'Aporte global'}
+                </span>
+              </CardContent>
+            </Card>
+
+            <Card className="border-[#E2E8F0]">
+              <CardContent className="p-5">
+                <span className="text-xs font-semibold text-[#64748B] uppercase">
+                  Custo Mensal Estimado
+                </span>
+                <p className="text-lg font-bold text-emerald-700 mt-2 tabular-nums">
+                  {formatBRL(
+                    (projeto.valor_mensal_execucao || 0) + (projeto.valor_mensal_despesas_adm || 0),
+                  )}
+                </p>
+                <span className="text-[11px] text-[#64748B] mt-1 block">
+                  Direto: {formatBRL(projeto.valor_mensal_execucao || 0)} | Adm:{' '}
+                  {formatBRL(projeto.valor_mensal_despesas_adm || 0)}
                 </span>
               </CardContent>
             </Card>
@@ -531,6 +714,15 @@ export default function ProjetoDetail() {
         onClose={() => setAtividadeModalOpen(false)}
         onSuccess={fetchData}
         defaultProjetoId={projeto.id}
+      />
+
+      {/* Modal Catálogo de Atividades */}
+      <ModalCatalogoAtividade
+        open={catalogoModalOpen}
+        onClose={() => setCatalogoModalOpen(false)}
+        onSuccess={fetchData}
+        projetoId={projeto.id}
+        atividadeToEdit={editingCatalogoAtiv}
       />
     </div>
   )

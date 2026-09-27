@@ -1,19 +1,21 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import {
-  Receipt,
+  FileText,
   Plus,
   Search,
   Filter,
   Download,
-  Eye,
   CheckCircle2,
   AlertCircle,
+  Clock,
+  Eye,
   FileSpreadsheet,
-  Building,
+  Receipt,
+  FileCheck,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   Select,
   SelectContent,
@@ -29,25 +31,72 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { StatusBadge, formatBRL, formatDateBR } from '@/components/StatusBadge'
-import { ModalNovaFatura } from '@/components/ModalNovaFatura'
-import { getFaturas, updateFatura, deleteFatura } from '@/services/api'
+import {
+  getFaturas,
+  updateFatura,
+  getFaturamentosMensais,
+  updateFaturamentoMensal,
+  deleteFaturamentoMensal,
+} from '@/services/api'
 import { useRealtime } from '@/hooks/use-realtime'
-import type { FaturaRecord, FaturaStatus } from '@/types'
+import { ModalNovaFatura } from '@/components/ModalNovaFatura'
+import { ModalNovoFaturamentoMensal } from '@/components/ModalNovoFaturamentoMensal'
+import { RelatorioFaturamentoModal } from '@/components/RelatorioFaturamentoModal'
+import type { FaturaRecord, FaturaStatus, FaturamentoMensalRecord } from '@/types'
 
 export default function Faturamento() {
+  const [faturamentosMensais, setFaturamentosMensais] = useState<FaturamentoMensalRecord[]>([])
   const [faturas, setFaturas] = useState<FaturaRecord[]>([])
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('todos')
   const [modalOpen, setModalOpen] = useState(false)
+  const [modalMensalOpen, setModalMensalOpen] = useState(false)
   const [viewFatura, setViewFatura] = useState<FaturaRecord | null>(null)
+  const [viewFaturamentoMensal, setViewFaturamentoMensal] =
+    useState<FaturamentoMensalRecord | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // Modal para atualizar Nota Fiscal do faturamento mensal
+  const [modalNFOpen, setModalNFOpen] = useState(false)
+  const [faturamentoParaNF, setFaturamentoParaNF] = useState<FaturamentoMensalRecord | null>(null)
+  const [numeroNFInput, setNumeroNFInput] = useState('')
+  const [statusNFInput, setStatusNFInput] = useState<'aguardando_nf' | 'nf_emitida' | 'liquidado'>(
+    'nf_emitida',
+  )
+
+  const handleSalvarNotaFiscal = async () => {
+    if (!faturamentoParaNF) return
+    try {
+      await updateFaturamentoMensal(faturamentoParaNF.id, {
+        numero_nf: numeroNFInput.trim() || undefined,
+        status_nf: statusNFInput,
+        data_emissao_nf: new Date().toISOString(),
+      })
+      setModalNFOpen(false)
+      fetchFaturas()
+    } catch {
+      alert('Erro ao atualizar dados da Nota Fiscal.')
+    }
+  }
+
+  const handleDeleteFatMensal = async (id: string, num: string) => {
+    if (window.confirm(`Deseja excluir o faturamento mensal nº ${num}?`)) {
+      try {
+        await deleteFaturamentoMensal(id)
+        fetchFaturas()
+      } catch {
+        alert('Erro ao excluir faturamento.')
+      }
+    }
+  }
 
   const fetchFaturas = async () => {
     try {
-      const data = await getFaturas()
-      setFaturas(data)
-    } catch (e) {
-      console.error(e)
+      const [dataFaturas, dataMensais] = await Promise.all([getFaturas(), getFaturamentosMensais()])
+      setFaturas(dataFaturas)
+      setFaturamentosMensais(dataMensais)
+    } catch (err) {
+      console.error('Erro ao buscar faturas:', err)
     } finally {
       setLoading(false)
     }
@@ -58,6 +107,7 @@ export default function Faturamento() {
   }, [])
 
   useRealtime('faturas', () => fetchFaturas())
+  useRealtime('faturamentos_mensais', () => fetchFaturas())
 
   const filteredFaturas = useMemo(() => {
     return faturas.filter((f) => {
@@ -292,7 +342,90 @@ Emitido eletronicamente via Sistema ONG Gestão.
         </CardContent>
       </Card>
 
-      {/* Modal Nova Fatura */}
+      {/* Modal Novo Faturamento Mensal do Termo de Parceria */}
+      <ModalNovoFaturamentoMensal
+        open={modalMensalOpen}
+        onClose={() => setModalMensalOpen(false)}
+        onSuccess={fetchFaturas}
+      />
+
+      {/* Relatório Completo de Faturamento (A4 / Excel com 4 abas) */}
+      <RelatorioFaturamentoModal
+        open={Boolean(viewFaturamentoMensal)}
+        onClose={() => setViewFaturamentoMensal(null)}
+        faturamento={viewFaturamentoMensal}
+        onUpdateStatus={fetchFaturas}
+      />
+
+      {/* Modal para Registro da Nota Fiscal */}
+      {faturamentoParaNF && (
+        <Dialog open={modalNFOpen} onOpenChange={setModalNFOpen}>
+          <DialogContent className="sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-[#1E293B]">
+                Registro de Nota Fiscal Emitida
+              </DialogTitle>
+              <DialogDescription className="text-xs text-[#64748B]">
+                Vincule o número da Nota Fiscal emitida posteriormente para o faturamento{' '}
+                {faturamentoParaNF.numero_sequencial}.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-3 py-2 text-xs">
+              <div className="space-y-1">
+                <label className="font-semibold text-[#1E293B]">
+                  Número da Nota Fiscal (NF-e) *
+                </label>
+                <Input
+                  value={numeroNFInput}
+                  onChange={(e) => setNumeroNFInput(e.target.value)}
+                  placeholder="Ex: 2026/089"
+                  className="h-8 text-xs font-mono font-bold"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-semibold text-[#1E293B]">Status do Título</label>
+                <Select
+                  value={statusNFInput}
+                  onValueChange={(val) =>
+                    setStatusNFInput(val as 'aguardando_nf' | 'nf_emitida' | 'liquidado')
+                  }
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="nf_emitida">NF Emitida (Aguardando Pagamento)</SelectItem>
+                    <SelectItem value="liquidado">Liquidado / Pago pela Prefeitura</SelectItem>
+                    <SelectItem value="aguardando_nf">Aguardando Emissão da NF</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setModalNFOpen(false)}
+                className="text-xs"
+              >
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSalvarNotaFiscal}
+                className="bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs font-semibold"
+              >
+                Salvar Nota Fiscal
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Modal Nova Fatura Avulsa */}
       <ModalNovaFatura
         open={modalOpen}
         onClose={() => setModalOpen(false)}

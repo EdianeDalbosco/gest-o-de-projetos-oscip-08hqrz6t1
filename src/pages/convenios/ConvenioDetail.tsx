@@ -18,6 +18,7 @@ import {
   AlertCircle,
   TrendingUp,
   FileCheck2,
+  FileText,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -361,6 +362,18 @@ export default function ConvenioDetail() {
                 Vigência: {formatDateBR(convenio.data_inicio)} a {formatDateBR(convenio.data_fim)}
               </span>
             </div>
+
+            {convenio.anexo_pdf && (
+              <a
+                href={`/api/files/convenios/${convenio.id}/${convenio.anexo_pdf}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 transition-colors font-medium"
+              >
+                <FileText className="w-3.5 h-3.5 text-red-600" />
+                <span>Visualizar Termo de Parceria (.PDF)</span>
+              </a>
+            )}
           </div>
 
           {convenio.observacoes && (

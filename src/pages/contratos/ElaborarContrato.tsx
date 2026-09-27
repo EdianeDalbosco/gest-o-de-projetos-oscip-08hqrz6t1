@@ -20,6 +20,8 @@ import {
   Info,
   Check,
   Building,
+  FileSpreadsheet,
+  Upload,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -34,7 +36,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { createContrato, getProjetos, getConvenios, getSecretarias } from '@/services/api'
+import {
+  createContrato,
+  getProjetos,
+  getConvenios,
+  getSecretarias,
+  getPrestadoresColaboradores,
+  getCatalogoAtividades,
+  createPrestadorColaborador,
+} from '@/services/api'
 import { formatBRL, formatDateBR } from '@/components/StatusBadge'
 import { valorPorExtenso } from '@/lib/extenso'
 import { maskCnpj, maskCpf } from '@/lib/masks'
@@ -49,6 +59,7 @@ import {
   gerarHtmlContratoPJ,
   exportarContratoComoDoc,
   exportarContratoComoTxt,
+  imprimirOuExportarPdfContrato,
 } from '@/lib/modelosContratoPJ'
 import type {
   ContratoTipo,
@@ -56,7 +67,10 @@ import type {
   ProjetoRecord,
   ConvenioRecord,
   SecretariaRecord,
+  PrestadorColaboradorRecord,
+  CatalogoAtividadeRecord,
 } from '@/types'
+import * as XLSX from 'xlsx'
 
 const STEPS = [
   { id: 1, title: 'Regime & Modelo' },
@@ -77,6 +91,18 @@ export default function ElaborarContrato() {
   const [projetos, setProjetos] = useState<ProjetoRecord[]>([])
   const [convenios, setConvenios] = useState<ConvenioRecord[]>([])
   const [secretarias, setSecretarias] = useState<SecretariaRecord[]>([])
+  const [prestadoresList, setPrestadoresList] = useState<PrestadorColaboradorRecord[]>([])
+  const [catalogoAtividadesList, setCatalogoAtividadesList] = useState<CatalogoAtividadeRecord[]>(
+    [],
+  )
+  const [selectedPrestadorId, setSelectedPrestadorId] = useState<string>('')
+  const [selectedAtividadeId, setSelectedAtividadeId] = useState<string>('')
+
+  // Importação Excel
+  const [importandoExcel, setImportandoExcel] = useState(false)
+  const [msgImportacao, setMsgImportacao] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(
+    null,
+  )
 
   // Step 2: Form Dados CLT
   const [nomeCLT, setNomeCLT] = useState('')
@@ -141,10 +167,16 @@ export default function ElaborarContrato() {
   const [contratoSalvoId, setContratoSalvoId] = useState<string | null>(null)
   const [erroSalvar, setErroSalvar] = useState<string | null>(null)
 
-  useEffect(() => {
+  const carregarDadosIniciais = () => {
     getProjetos().then(setProjetos).catch(console.error)
     getConvenios().then(setConvenios).catch(console.error)
     getSecretarias().then(setSecretarias).catch(console.error)
+    getPrestadoresColaboradores().then(setPrestadoresList).catch(console.error)
+    getCatalogoAtividades().then(setCatalogoAtividadesList).catch(console.error)
+  }
+
+  useEffect(() => {
+    carregarDadosIniciais()
   }, [])
 
   // Atualiza nome do projeto caso selecione um projeto cadastrado
@@ -282,9 +314,154 @@ ${nomeCLT || '[CONTRATADO]'}`
   const textoCompletoGerado =
     tipo === 'PJ' ? gerarTextoContratoPJ(getDadosContratoPJ()) : gerarTextoContratoCLT()
 
+  // Seleção automática a partir do cadastro de prestadores PJ
+  const handleSelectPrestador = (prestadorId: string) => {
+    setSelectedPrestadorId(prestadorId)
+    if (!prestadorId || prestadorId === 'novo') return
+
+    const prest = prestadoresList.find((p) => p.id === prestadorId)
+    if (prest) {
+      if (prest.tipo === 'PJ') {
+        if (prest.razao_social) setRazaoSocial(prest.razao_social)
+        if (prest.cnpj) setCnpj(prest.cnpj)
+        if (prest.natureza_juridica) setNaturezaJuridica(prest.natureza_juridica)
+        if (prest.endereco) setEnderecoEmpresarial(prest.endereco)
+        if (prest.profissional) setRepresentanteLegal(prest.profissional)
+        if (prest.cpf_profissional) setCpfRepresentante(prest.cpf_profissional)
+        if (prest.cargo) setAtividadePrincipal(prest.cargo)
+        if (prest.remuneracao_base && prest.remuneracao_base > 0) {
+          setValorNumericoPJ(prest.remuneracao_base)
+        }
+      } else {
+        if (prest.nome_colaborador) setNomeCLT(prest.nome_colaborador)
+        if (prest.cpf_colaborador) setDocumentoIdCLT(prest.cpf_colaborador)
+        if (prest.cargo) setCargoFuncaoCLT(prest.cargo)
+        if (prest.remuneracao_base && prest.remuneracao_base > 0) {
+          setValorCLT(prest.remuneracao_base)
+        }
+      }
+    }
+  }
+
+  // Seleção automática a partir do catálogo de atividades
+  const handleSelectAtividadeCatalogo = (catId: string) => {
+    setSelectedAtividadeId(catId)
+    if (!catId || catId === 'custom') return
+
+    const item = catalogoAtividadesList.find((c) => c.id === catId)
+    if (item) {
+      setAtividadePrincipal(item.descricao)
+      if (item.valor_unitario && item.valor_unitario > 0) {
+        setValorNumericoPJ(item.valor_unitario)
+      }
+      if (item.detalhes_escopo) {
+        setDescricaoEscopo(item.detalhes_escopo)
+      }
+      if (item.tipo_execucao === 'Plantão' || item.tipo_execucao === 'Conforme Demanda') {
+        setUnidadePlantaoDemanda('plantão / demanda')
+      }
+    }
+  }
+
+  // Importar planilha Excel (.xlsx) com prestadores / contratos
+  const handleImportarPlanilhaExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setImportandoExcel(true)
+    setMsgImportacao(null)
+
+    try {
+      const buffer = await file.arrayBuffer()
+      const workbook = XLSX.read(buffer, { type: 'array' })
+
+      // Procura abas comuns do modelo (ex: "DETALHAMENTO PJ SAUDE", "Referencia PT", ou a primeira)
+      const sheetName =
+        workbook.SheetNames.find(
+          (s) => s.toUpperCase().includes('PJ') || s.toUpperCase().includes('REFERENCIA'),
+        ) || workbook.SheetNames[0]
+
+      const sheet = workbook.Sheets[sheetName]
+      const rawRows: any[] = XLSX.utils.sheet_to_json(sheet, { header: 1 })
+
+      // Localiza cabeçalho com EMPRESA, CNPJ, PROFISSIONAL, ATIVIDADE ou similar
+      let headerIdx = -1
+      for (let i = 0; i < Math.min(rawRows.length, 15); i++) {
+        const row = rawRows[i]
+        if (Array.isArray(row)) {
+          const rowText = row.map((c) => String(c || '').toUpperCase()).join(' ')
+          if (
+            rowText.includes('EMPRESA') ||
+            rowText.includes('CNPJ') ||
+            rowText.includes('PROFISSIONAL') ||
+            rowText.includes('ATIVIDADE')
+          ) {
+            headerIdx = i
+            break
+          }
+        }
+      }
+
+      let importadosCount = 0
+      if (headerIdx !== -1) {
+        const headers = (rawRows[headerIdx] as string[]).map((h) =>
+          String(h || '')
+            .trim()
+            .toUpperCase(),
+        )
+        const empIdx = headers.findIndex((h) => h.includes('EMPRESA') || h.includes('RAZÃO'))
+        const cnpjIdx = headers.findIndex((h) => h.includes('CNPJ'))
+        const profIdx = headers.findIndex((h) => h.includes('PROFISSIONAL') || h.includes('NOME'))
+        const ativIdx = headers.findIndex(
+          (h) => h.includes('ATIVIDADE') || h.includes('CARGO') || h.includes('FUNÇÃO'),
+        )
+        const valIdx = headers.findIndex(
+          (h) => h.includes('REMUNERAÇÃO') || h.includes('VALOR') || h.includes('BASE'),
+        )
+
+        for (let r = headerIdx + 1; r < rawRows.length; r++) {
+          const row = rawRows[r]
+          if (!row || !Array.isArray(row)) continue
+          const empresa = empIdx !== -1 ? String(row[empIdx] || '').trim() : ''
+          const cnpjVal = cnpjIdx !== -1 ? String(row[cnpjIdx] || '').trim() : ''
+          const prof = profIdx !== -1 ? String(row[profIdx] || '').trim() : ''
+          const ativ = ativIdx !== -1 ? String(row[ativIdx] || '').trim() : ''
+          const valNum = valIdx !== -1 ? Number(row[valIdx]) || 0 : 0
+
+          if (empresa || cnpjVal || prof) {
+            await createPrestadorColaborador({
+              tipo: 'PJ',
+              razao_social: empresa || prof,
+              cnpj: cnpjVal || undefined,
+              profissional: prof || undefined,
+              cargo: ativ || 'Prestador PJ',
+              remuneracao_base: valNum > 0 ? valNum : undefined,
+            })
+            importadosCount++
+          }
+        }
+      }
+
+      await getPrestadoresColaboradores().then(setPrestadoresList)
+      setMsgImportacao({
+        tipo: 'ok',
+        texto: `Importação concluída! ${importadosCount} registros lidos da planilha "${file.name}".`,
+      })
+    } catch (err: unknown) {
+      setMsgImportacao({
+        tipo: 'erro',
+        texto: err instanceof Error ? err.message : 'Falha ao processar arquivo Excel.',
+      })
+    } finally {
+      setImportandoExcel(false)
+      // limpa input file
+      e.target.value = ''
+    }
+  }
+
   // Impressão nativa em layout formal
   const handlePrint = () => {
-    window.print()
+    imprimirOuExportarPdfContrato(getDadosContratoPJ())
   }
 
   // Exportar TXT
@@ -476,14 +653,67 @@ ${nomeCLT || '[CONTRATADO]'}`
       {/* PASSO 1: REGIME E MODELO */}
       {currentStep === 1 && (
         <div className="space-y-6">
+          {/* Card de Importação em Lote de Planilha Excel */}
+          <div className="p-4 rounded-xl border border-dashed border-emerald-300 bg-emerald-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-lg bg-emerald-100 text-[#1FAF7A] flex items-center justify-center shrink-0">
+                <FileSpreadsheet className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-xs sm:text-sm font-bold text-[#1E293B]">
+                  Importar Planilha Excel (.xlsx) para Elaboração de Contratos
+                </h4>
+                <p className="text-[11px] text-[#64748B] leading-relaxed">
+                  Faça o upload de planilha Excel com colunas{' '}
+                  <strong>EMPRESA, CNPJ, PROFISSIONAL, ATIVIDADE, REMUNERAÇÃO</strong> (como nas
+                  planilhas do modelo do Termo de Parceria). O sistema cadastrará os prestadores
+                  automaticamente sem embutir dados no código.
+                </p>
+                {msgImportacao && (
+                  <p
+                    className={`text-xs font-semibold mt-1 ${
+                      msgImportacao.tipo === 'ok' ? 'text-emerald-700' : 'text-red-600'
+                    }`}
+                  >
+                    {msgImportacao.texto}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <label className="relative shrink-0 cursor-pointer">
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleImportarPlanilhaExcel}
+                disabled={importandoExcel}
+                className="sr-only"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={importandoExcel}
+                className="bg-white hover:bg-emerald-50 border-emerald-300 text-emerald-800 font-semibold text-xs pointer-events-none"
+              >
+                {importandoExcel ? (
+                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                ) : (
+                  <Upload className="w-3.5 h-3.5 mr-1.5 text-[#1FAF7A]" />
+                )}
+                {importandoExcel ? 'Lendo arquivo...' : 'Importar Planilha .xlsx'}
+              </Button>
+            </label>
+          </div>
+
           <div className="bg-white p-6 rounded-xl border border-[#E2E8F0] shadow-sm space-y-4">
             <div>
               <h3 className="text-base font-bold text-[#1E293B]">
                 1. Selecione a Modalidade de Contratação
               </h3>
               <p className="text-xs text-[#64748B] mt-0.5">
-                Os modelos de contrato com cláusulas verbatim da São Bento são aplicados
-                especificamente para contratos PJ.
+                Os modelos de contrato com cláusulas da São Bento são aplicados especificamente para
+                contratos PJ vinculados ao Termo de Parceria.
               </p>
             </div>
 
@@ -662,6 +892,33 @@ ${nomeCLT || '[CONTRATADO]'}`
                   </span>
                 </div>
 
+                {/* Seleção rápida do cadastro de prestadores */}
+                {prestadoresList.filter((p) => p.tipo === 'PJ').length > 0 && (
+                  <div className="p-3 bg-emerald-50/60 border border-emerald-200 rounded-lg space-y-1.5">
+                    <Label className="text-xs font-bold text-emerald-900 flex items-center justify-between">
+                      <span>Buscar Prestador no Cadastro Centralizado:</span>
+                      <span className="text-[11px] font-normal text-emerald-700">
+                        Preenchimento instantâneo
+                      </span>
+                    </Label>
+                    <Select value={selectedPrestadorId} onValueChange={handleSelectPrestador}>
+                      <SelectTrigger className="bg-white text-xs h-9 border-emerald-200">
+                        <SelectValue placeholder="Selecione um prestador já cadastrado ou digite abaixo..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="novo">+ Digitar novo prestador manualmente</SelectItem>
+                        {prestadoresList
+                          .filter((p) => p.tipo === 'PJ')
+                          .map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {p.razao_social} {p.cnpj ? `(${p.cnpj})` : ''} - {p.cargo}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold text-[#1E293B]">
@@ -771,23 +1028,44 @@ ${nomeCLT || '[CONTRATADO]'}`
                     <Label className="text-xs font-semibold text-[#1E293B]">
                       Secretaria / Órgão Demandante *
                     </Label>
-                    <Input
+                    <Select
                       value={secretariaOrgao}
-                      onChange={(e) => setSecretariaOrgao(e.target.value)}
-                      placeholder="Ex: Secretaria Municipal de Saúde"
-                    />
+                      onValueChange={(val) => {
+                        setSecretariaOrgao(val)
+                      }}
+                    >
+                      <SelectTrigger className="text-xs">
+                        <SelectValue placeholder="Selecione a Secretaria" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {secretarias.map((s) => (
+                          <SelectItem key={s.id} value={s.nome}>
+                            {s.nome}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="Secretaria Municipal de Saúde">
+                          Secretaria Municipal de Saúde
+                        </SelectItem>
+                        <SelectItem value="Secretaria Municipal de Obras Públicas e Urbanismo">
+                          Secretaria Municipal de Obras Públicas e Urbanismo
+                        </SelectItem>
+                        <SelectItem value="Secretaria Municipal de Educação">
+                          Secretaria Municipal de Educação
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold text-[#1E293B]">
-                      Projeto no Sistema (Vínculo Opcional)
+                      Projeto Vinculado *
                     </Label>
                     <Select value={projetoIdPJ || 'none'} onValueChange={handleSelectProjetoPJ}>
                       <SelectTrigger className="text-xs">
                         <SelectValue placeholder="Selecione um projeto cadastrado" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">Outro / Texto Livre</SelectItem>
+                        <SelectItem value="none">Texto Livre / Não vinculado</SelectItem>
                         {projetos.map((p) => (
                           <SelectItem key={p.id} value={p.id}>
                             {p.nome}
@@ -798,6 +1076,34 @@ ${nomeCLT || '[CONTRATADO]'}`
                   </div>
                 </div>
 
+                {/* Seleção a partir do Catálogo de Atividades do Projeto */}
+                {catalogoAtividadesList.length > 0 && (
+                  <div className="p-3 bg-sky-50/60 border border-sky-200 rounded-lg space-y-1.5">
+                    <Label className="text-xs font-bold text-sky-900 flex items-center justify-between">
+                      <span>Selecionar Atividade Prevista no Catálogo do Projeto:</span>
+                      <span className="text-[11px] font-normal text-sky-700">
+                        Traz valor unitário e escopo
+                      </span>
+                    </Label>
+                    <Select
+                      value={selectedAtividadeId}
+                      onValueChange={handleSelectAtividadeCatalogo}
+                    >
+                      <SelectTrigger className="bg-white text-xs h-9 border-sky-200">
+                        <SelectValue placeholder="Selecione uma atividade prevista no Plano de Trabalho..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="custom">+ Digitar atividade livre</SelectItem>
+                        {catalogoAtividadesList.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.id}>
+                            {cat.descricao} ({cat.tipo_execucao}) - {formatBRL(cat.valor_unitario)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold text-[#1E293B]">
                     Identificação do Projeto no Contrato (Cláusula Primeira) *
@@ -805,7 +1111,7 @@ ${nomeCLT || '[CONTRATADO]'}`
                   <Input
                     value={projetoNome}
                     onChange={(e) => setProjetoNome(e.target.value)}
-                    placeholder="Ex: Apoio à Saúde Básica do Município de Dom Aquino/MT"
+                    placeholder="Ex: Projeto FORSAÚDE – Fortalecimento da Saúde Pública Municipal"
                   />
                   <span className="text-[11px] text-slate-500">
                     O texto padrão cita:{' '}
@@ -1362,24 +1668,29 @@ ${nomeCLT || '[CONTRATADO]'}`
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              <Button variant="outline" size="sm" onClick={handlePrint} className="text-xs gap-1.5">
-                <Printer className="w-3.5 h-3.5 text-[#1FAF7A]" />
-                Imprimir Documento
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrint}
+                className="text-xs gap-1.5 bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+              >
+                <Printer className="w-3.5 h-3.5 text-red-600" />
+                Baixar / Imprimir .PDF
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleExportDoc}
-                className="text-xs gap-1.5"
+                className="text-xs gap-1.5 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
               >
                 <Download className="w-3.5 h-3.5 text-blue-600" />
-                Baixar .DOC
+                Baixar Word (.doc)
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleExportTxt}
-                className="text-xs gap-1.5"
+                className="text-xs gap-1.5 text-slate-700 hover:bg-slate-50"
               >
                 <FileText className="w-3.5 h-3.5 text-slate-600" />
                 Baixar .TXT
@@ -1461,12 +1772,11 @@ ${nomeCLT || '[CONTRATADO]'}`
               {/* Botões de Ação Final */}
               <div className="flex flex-wrap items-center justify-center gap-3 pt-3">
                 <Button
-                  onClick={handlePrint}
-                  variant="outline"
-                  className="text-xs font-semibold gap-1.5"
+                  onClick={() => imprimirOuExportarPdfContrato(getDadosContratoPJ())}
+                  className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold gap-1.5"
                 >
-                  <Printer className="w-4 h-4 text-[#1FAF7A]" />
-                  Imprimir Documento
+                  <Printer className="w-4 h-4" />
+                  Baixar / Imprimir Contrato (.PDF)
                 </Button>
 
                 <Button

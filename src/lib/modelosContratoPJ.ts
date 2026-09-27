@@ -600,6 +600,25 @@ export function exportarContratoComoDoc(dados: DadosContratoPJ) {
 }
 
 /**
+ * Imprime ou gera PDF do contrato via janela de impressão formatada A4 com estilos @media print.
+ */
+export function imprimirOuExportarPdfContrato(dados: DadosContratoPJ) {
+  const html = gerarHtmlContratoPJ(dados)
+  const janela = window.open('', '_blank', 'width=800,height=900')
+  if (!janela) {
+    alert('Por favor, permita pop-ups no seu navegador para imprimir ou gerar o PDF do contrato.')
+    return
+  }
+  janela.document.open()
+  janela.document.write(html)
+  janela.document.close()
+  janela.focus()
+  setTimeout(() => {
+    janela.print()
+  }, 400)
+}
+
+/**
  * Exporta como arquivo texto (.txt)
  */
 export function exportarContratoComoTxt(dados: DadosContratoPJ) {

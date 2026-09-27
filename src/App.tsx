@@ -25,6 +25,7 @@ import ContratosList from './pages/contratos/ContratosList'
 import ContratoDetail from './pages/contratos/ContratoDetail'
 import ElaborarContrato from './pages/contratos/ElaborarContrato'
 import AtividadesList from './pages/contratos/AtividadesList'
+import PrestadoresList from './pages/contratos/PrestadoresList'
 
 const App = () => (
   <BrowserRouter>
@@ -55,6 +56,7 @@ const App = () => (
             <Route path="/convenios/:id" element={<ConvenioDetail />} />
             <Route path="/faturamento" element={<Faturamento />} />
             <Route path="/financeiro" element={<GestaoFinanceira />} />
+            <Route path="/prestadores" element={<PrestadoresList />} />
             <Route path="/contratos" element={<ContratosList />} />
             <Route path="/contratos/:id" element={<ContratoDetail />} />
             <Route path="/contratos/novo/elaborar" element={<ElaborarContrato />} />

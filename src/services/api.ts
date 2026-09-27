@@ -10,6 +10,9 @@ import type {
   PlanoTrabalhoRecord,
   MetaRecord,
   EmpenhoRecord,
+  PrestadorColaboradorRecord,
+  CatalogoAtividadeRecord,
+  FaturamentoMensalRecord,
 } from '@/types'
 
 // PROJETOS
@@ -319,4 +322,94 @@ export async function updateEmpenho(
 
 export async function deleteEmpenho(id: string): Promise<boolean> {
   return pb.collection('empenhos').delete(id)
+}
+
+// PRESTADORES E COLABORADORES
+export async function getPrestadoresColaboradores(): Promise<PrestadorColaboradorRecord[]> {
+  return pb.collection('prestadores_colaboradores').getFullList<PrestadorColaboradorRecord>({
+    sort: '-created',
+  })
+}
+
+export async function getPrestadorColaboradorById(id: string): Promise<PrestadorColaboradorRecord> {
+  return pb.collection('prestadores_colaboradores').getOne<PrestadorColaboradorRecord>(id)
+}
+
+export async function createPrestadorColaborador(
+  data: Partial<PrestadorColaboradorRecord>,
+): Promise<PrestadorColaboradorRecord> {
+  return pb.collection('prestadores_colaboradores').create<PrestadorColaboradorRecord>(data)
+}
+
+export async function updatePrestadorColaborador(
+  id: string,
+  data: Partial<PrestadorColaboradorRecord>,
+): Promise<PrestadorColaboradorRecord> {
+  return pb.collection('prestadores_colaboradores').update<PrestadorColaboradorRecord>(id, data)
+}
+
+export async function deletePrestadorColaborador(id: string): Promise<boolean> {
+  return pb.collection('prestadores_colaboradores').delete(id)
+}
+
+// CATÁLOGO DE ATIVIDADES
+export async function getCatalogoAtividades(
+  projetoId?: string,
+): Promise<CatalogoAtividadeRecord[]> {
+  const options: Record<string, unknown> = {
+    sort: 'descricao',
+    expand: 'projeto_id',
+  }
+  if (projetoId) {
+    options.filter = `projeto_id = "${projetoId}"`
+  }
+  return pb.collection('catalogo_atividades').getFullList<CatalogoAtividadeRecord>(options)
+}
+
+export async function createCatalogoAtividade(
+  data: Partial<CatalogoAtividadeRecord>,
+): Promise<CatalogoAtividadeRecord> {
+  return pb.collection('catalogo_atividades').create<CatalogoAtividadeRecord>(data)
+}
+
+export async function updateCatalogoAtividade(
+  id: string,
+  data: Partial<CatalogoAtividadeRecord>,
+): Promise<CatalogoAtividadeRecord> {
+  return pb.collection('catalogo_atividades').update<CatalogoAtividadeRecord>(id, data)
+}
+
+export async function deleteCatalogoAtividade(id: string): Promise<boolean> {
+  return pb.collection('catalogo_atividades').delete(id)
+}
+
+// FATURAMENTOS MENSAIS ESTRUTURADOS
+export async function getFaturamentosMensais(): Promise<FaturamentoMensalRecord[]> {
+  return pb.collection('faturamentos_mensais').getFullList<FaturamentoMensalRecord>({
+    sort: '-ano,-mes,-created',
+    expand: 'convenio_id,secretaria_id,projeto_id',
+  })
+}
+
+export async function getFaturamentoMensalById(id: string): Promise<FaturamentoMensalRecord> {
+  return pb.collection('faturamentos_mensais').getOne<FaturamentoMensalRecord>(id, {
+    expand: 'convenio_id,secretaria_id,projeto_id',
+  })
+}
+
+export async function createFaturamentoMensal(
+  data: Partial<FaturamentoMensalRecord>,
+): Promise<FaturamentoMensalRecord> {
+  return pb.collection('faturamentos_mensais').create<FaturamentoMensalRecord>(data)
+}
+
+export async function updateFaturamentoMensal(
+  id: string,
+  data: Partial<FaturamentoMensalRecord>,
+): Promise<FaturamentoMensalRecord> {
+  return pb.collection('faturamentos_mensais').update<FaturamentoMensalRecord>(id, data)
+}
+
+export async function deleteFaturamentoMensal(id: string): Promise<boolean> {
+  return pb.collection('faturamentos_mensais').delete(id)
 }

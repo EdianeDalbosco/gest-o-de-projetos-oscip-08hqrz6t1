@@ -20,6 +20,15 @@ export interface ProjetoRecord extends RecordModel {
   data_inicio?: string
   data_fim?: string
   parceiro?: string
+  secretaria_id?: string
+  convenio_id?: string
+  valor_mensal_execucao?: number
+  valor_mensal_despesas_adm?: number
+  meses_duracao?: number
+  expand?: {
+    secretaria_id?: SecretariaRecord
+    convenio_id?: ConvenioRecord
+  }
 }
 
 export type ContratoTipo = 'CLT' | 'PJ'
@@ -102,6 +111,133 @@ export interface ConvenioRecord extends RecordModel {
   data_fim?: string
   status: ConvenioStatus
   observacoes?: string
+  anexo_pdf?: string
+}
+
+// CADASTRO DE PRESTADORES E CLTs
+export type PrestadorTipo = 'CLT' | 'PJ'
+
+export interface PrestadorColaboradorRecord extends RecordModel {
+  tipo: PrestadorTipo
+  // PJ
+  razao_social?: string
+  cnpj?: string
+  profissional?: string
+  cpf_profissional?: string
+  natureza_juridica?: string
+  endereco?: string
+  // CLT
+  nome_colaborador?: string
+  cpf_colaborador?: string
+  codigo_consisa?: string
+  cargo: string
+  setor?: string
+  situacao?: string
+  remuneracao_base?: number
+  observacoes?: string
+}
+
+// CATÁLOGO DE ATIVIDADES DO PROJETO
+export type TipoExecucaoAtividade = 'Mensal' | 'Serviço Mensal' | 'Conforme Demanda' | 'Plantão'
+
+export interface CatalogoAtividadeRecord extends RecordModel {
+  projeto_id: string
+  tipo_vinculo: 'CLT' | 'PJ'
+  tipo_execucao: TipoExecucaoAtividade
+  descricao: string
+  valor_unitario: number
+  proventos?: number
+  provisao?: number
+  encargos?: number
+  detalhes_escopo?: string
+  expand?: {
+    projeto_id?: ProjetoRecord
+  }
+}
+
+// FATURAMENTOS MENSAIS ESTRUTURADOS
+export type FaturamentoTipo = 'PJ' | 'CLT' | 'CONSOLIDADO'
+export type StatusNotaFiscal = 'aguardando_nf' | 'nf_emitida' | 'liquidado'
+
+export interface FaturamentoItemPJ {
+  item?: number | string
+  empresa: string
+  cnpj: string
+  profissional: string
+  dotacao?: string
+  atividade: string
+  tipo: string // 'Serviço Mensal' | 'Demanda'
+  local?: string
+  dataInicio?: string
+  remuneracaoBase: number
+  ref: number // dias trabalhados (ex: 31, 20) ou qtde de plantões/demandas
+  valor: number
+}
+
+export interface FaturamentoItemCLT {
+  codigoConsisa?: string
+  colaborador: string
+  cpf: string
+  cargo: string
+  setor?: string
+  situacao?: string
+  remuneracaoBase: number
+  ref: number
+  remuneracao?: number
+  insalubridade?: number
+  periculosidade?: number
+  salarioFamilia?: number
+  horasExtras?: number
+  dsr?: number
+  adicionalNoturno?: number
+  gratificacao?: number
+  plantao?: number
+  faltas?: number
+  proventos?: number
+  provisao1944?: number
+  verbasRescisorias?: number
+  multa40?: number
+  encargosTributarios?: number
+  valorTotal: number
+}
+
+export interface FaturamentoItemAtividade {
+  descricao: string
+  tipo: string
+  quantidade: number
+  valor: number
+  tipoVinculo: 'CLT' | 'PJ'
+}
+
+export interface FaturamentoMensalRecord extends RecordModel {
+  numero_sequencial: string
+  convenio_id: string
+  secretaria_id: string
+  projeto_id?: string
+  tipo_faturamento: FaturamentoTipo
+  competencia: string // ex: "01 A 31 DE AGOSTO DE 2026"
+  periodo: string // ex: "AGOSTO DE 2026"
+  mes: number
+  ano: number
+  valor_execucao_direta: number
+  valor_execucao_clt?: number
+  valor_execucao_pj?: number
+  valor_despesas_adm?: number
+  valor_total: number
+  status_nf?: StatusNotaFiscal
+  numero_nf?: string
+  data_emissao_nf?: string
+  dados_resumo?: Record<string, unknown>
+  itens_detalhamento_pj?: FaturamentoItemPJ[]
+  itens_detalhamento_clt?: FaturamentoItemCLT[]
+  itens_por_atividade?: FaturamentoItemAtividade[]
+  rateio_despesas_adm?: Record<string, unknown>
+  observacoes?: string
+  expand?: {
+    convenio_id?: ConvenioRecord
+    secretaria_id?: SecretariaRecord
+    projeto_id?: ProjetoRecord
+  }
 }
 
 export interface SecretariaRecord extends RecordModel {

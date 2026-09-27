@@ -19,8 +19,14 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
-import { createProjeto, updateProjeto } from '@/services/api'
-import type { ProjetoRecord, ProjetoStatus, ContratoVinculadoTipo } from '@/types'
+import { createProjeto, updateProjeto, getSecretarias, getConvenios } from '@/services/api'
+import type {
+  ProjetoRecord,
+  ProjetoStatus,
+  ContratoVinculadoTipo,
+  SecretariaRecord,
+  ConvenioRecord,
+} from '@/types'
 import { Loader2 } from 'lucide-react'
 
 interface ModalProjetoProps {
@@ -39,8 +45,20 @@ export function ModalProjeto({ open, onClose, onSuccess, projetoToEdit }: ModalP
   const [parceiro, setParceiro] = useState('')
   const [dataInicio, setDataInicio] = useState('')
   const [dataFim, setDataFim] = useState('')
+  const [secretariaId, setSecretariaId] = useState('')
+  const [convenioId, setConvenioId] = useState('')
+  const [valorMensalExecucao, setValorMensalExecucao] = useState<number | string>('')
+  const [valorMensalDespesasAdm, setValorMensalDespesasAdm] = useState<number | string>('')
+  const [mesesDuracao, setMesesDuracao] = useState<number | string>('6')
+  const [secretariasList, setSecretariasList] = useState<SecretariaRecord[]>([])
+  const [conveniosList, setConveniosList] = useState<ConvenioRecord[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    getSecretarias().then(setSecretariasList).catch(console.error)
+    getConvenios().then(setConveniosList).catch(console.error)
+  }, [])
 
   useEffect(() => {
     if (projetoToEdit) {
@@ -63,18 +81,42 @@ export function ModalProjeto({ open, onClose, onSuccess, projetoToEdit }: ModalP
       setParceiro(projetoToEdit.parceiro || '')
       setDataInicio(projetoToEdit.data_inicio ? projetoToEdit.data_inicio.split('T')[0] : '')
       setDataFim(projetoToEdit.data_fim ? projetoToEdit.data_fim.split('T')[0] : '')
+      setSecretariaId(projetoToEdit.secretaria_id || '')
+      setConvenioId(projetoToEdit.convenio_id || '')
+      setValorMensalExecucao(projetoToEdit.valor_mensal_execucao || '')
+      setValorMensalDespesasAdm(projetoToEdit.valor_mensal_despesas_adm || '')
+      setMesesDuracao(projetoToEdit.meses_duracao || 6)
     } else {
       setNome('')
       setDescricao('')
       setValorTotal('')
       setStatus('ativo')
-      setContratosVinculados(['CLT'])
+      setContratosVinculados(['CLT', 'PJ'])
       setParceiro('')
       setDataInicio(new Date().toISOString().split('T')[0])
       setDataFim('')
+      setSecretariaId('')
+      setConvenioId('')
+      setValorMensalExecucao('')
+      setValorMensalDespesasAdm('')
+      setMesesDuracao(6)
     }
     setErrors({})
   }, [projetoToEdit, open])
+
+  // Recalcula valor total automático quando preenche execução mensal, despesas adm e meses
+  const handleRecalcularTotal = (
+    vExec: number | string,
+    vAdm: number | string,
+    meses: number | string,
+  ) => {
+    const e = Number(vExec) || 0
+    const a = Number(vAdm) || 0
+    const m = Number(meses) || 1
+    if (e > 0 || a > 0) {
+      setValorTotal(((e + a) * m).toFixed(2))
+    }
+  }
 
   const toggleContrato = (tipo: ContratoVinculadoTipo) => {
     setContratosVinculados((prev) => {
@@ -108,10 +150,17 @@ export function ModalProjeto({ open, onClose, onSuccess, projetoToEdit }: ModalP
       const payload: Partial<ProjetoRecord> = {
         nome: nome.trim(),
         descricao: descricao.trim() || undefined,
-        valor_total: Number(valorTotal),
+        valor_total: Number(valorTotal) || 0,
         status,
         contratos_vinculados: contratosVinculados,
         parceiro: parceiro.trim() || undefined,
+        secretaria_id: secretariaId || undefined,
+        convenio_id: convenioId || undefined,
+        valor_mensal_execucao: valorMensalExecucao ? Number(valorMensalExecucao) : undefined,
+        valor_mensal_despesas_adm: valorMensalDespesasAdm
+          ? Number(valorMensalDespesasAdm)
+          : undefined,
+        meses_duracao: mesesDuracao ? Number(mesesDuracao) : undefined,
         data_inicio: dataInicio ? new Date(dataInicio).toISOString() : undefined,
         data_fim: dataFim ? new Date(dataFim).toISOString() : undefined,
       }
@@ -165,22 +214,130 @@ export function ModalProjeto({ open, onClose, onSuccess, projetoToEdit }: ModalP
             {errors.nome && <p className="text-xs text-red-500">{errors.nome}</p>}
           </div>
 
+          {/* Secretaria Vinculada e Instrumento */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="parceiro" className="text-xs font-semibold text-[#1E293B]">
-                Organização Parceira / Fomentador
+              <Label htmlFor="secretariaId" className="text-xs font-semibold text-[#1E293B]">
+                Secretaria Responsável
               </Label>
-              <Input
-                id="parceiro"
-                value={parceiro}
-                onChange={(e) => setParceiro(e.target.value)}
-                placeholder="Ex: Secretaria de Assistência Social"
-              />
+              <Select
+                value={secretariaId}
+                onValueChange={(val) => {
+                  setSecretariaId(val)
+                  const sec = secretariasList.find((s) => s.id === val)
+                  if (sec?.convenio_id && !convenioId) {
+                    setConvenioId(sec.convenio_id)
+                  }
+                }}
+              >
+                <SelectTrigger id="secretariaId">
+                  <SelectValue placeholder="Selecione a Secretaria" />
+                </SelectTrigger>
+                <SelectContent>
+                  {secretariasList.map((sec) => (
+                    <SelectItem key={sec.id} value={sec.id}>
+                      {sec.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-1.5">
+              <Label htmlFor="convenioId" className="text-xs font-semibold text-[#1E293B]">
+                Instrumento / Termo Vinculado
+              </Label>
+              <Select value={convenioId} onValueChange={setConvenioId}>
+                <SelectTrigger id="convenioId">
+                  <SelectValue placeholder="Selecione o Instrumento" />
+                </SelectTrigger>
+                <SelectContent>
+                  {conveniosList.map((conv) => (
+                    <SelectItem key={conv.id} value={conv.id}>
+                      {conv.numero_instrumento} - {conv.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Custos Mensais: Execução Direta, Despesas Administrativas e Valor Total */}
+          <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-3">
+            <span className="text-xs font-bold text-[#1E293B] block">
+              Formação de Custo do Projeto (Mensal & Total)
+            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="valorMensalExecucao"
+                  className="text-[11px] font-semibold text-[#475569]"
+                >
+                  Execução Direta Mensal (R$)
+                </Label>
+                <Input
+                  id="valorMensalExecucao"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={valorMensalExecucao}
+                  onChange={(e) => {
+                    setValorMensalExecucao(e.target.value)
+                    handleRecalcularTotal(e.target.value, valorMensalDespesasAdm, mesesDuracao)
+                  }}
+                  placeholder="Ex: 440013.38"
+                  className="h-9 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="valorMensalDespesasAdm"
+                  className="text-[11px] font-semibold text-[#475569]"
+                >
+                  Desp. Adm/Oper. Mensal (R$)
+                </Label>
+                <Input
+                  id="valorMensalDespesasAdm"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={valorMensalDespesasAdm}
+                  onChange={(e) => {
+                    setValorMensalDespesasAdm(e.target.value)
+                    handleRecalcularTotal(valorMensalExecucao, e.target.value, mesesDuracao)
+                  }}
+                  placeholder="Ex: 42901.31"
+                  className="h-9 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="mesesDuracao" className="text-[11px] font-semibold text-[#475569]">
+                  Meses de Execução
+                </Label>
+                <Input
+                  id="mesesDuracao"
+                  type="number"
+                  min="1"
+                  value={mesesDuracao}
+                  onChange={(e) => {
+                    setMesesDuracao(e.target.value)
+                    handleRecalcularTotal(
+                      valorMensalExecucao,
+                      valorMensalDespesasAdm,
+                      e.target.value,
+                    )
+                  }}
+                  placeholder="6"
+                  className="h-9 text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5 pt-1">
               <Label htmlFor="valorTotal" className="text-xs font-semibold text-[#1E293B]">
-                Valor Total (R$) *
+                Valor Total Global do Projeto (R$) *
               </Label>
               <Input
                 id="valorTotal"
@@ -189,8 +346,8 @@ export function ModalProjeto({ open, onClose, onSuccess, projetoToEdit }: ModalP
                 step="0.01"
                 value={valorTotal}
                 onChange={(e) => setValorTotal(e.target.value)}
-                placeholder="0.00"
-                className={errors.valorTotal ? 'border-red-500' : ''}
+                placeholder="Ex: 2897488.14"
+                className={`font-semibold ${errors.valorTotal ? 'border-red-500' : ''}`}
               />
               {errors.valorTotal && <p className="text-xs text-red-500">{errors.valorTotal}</p>}
             </div>
