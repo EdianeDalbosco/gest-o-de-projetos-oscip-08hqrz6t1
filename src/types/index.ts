@@ -8,13 +8,15 @@ export interface UserRecord extends RecordModel {
 
 export type ProjetoStatus = 'ativo' | 'pausado' | 'concluido' | 'cancelado'
 
+export type ContratoVinculadoTipo = 'CLT' | 'PJ'
+
 export interface ProjetoRecord extends RecordModel {
   nome: string
   descricao?: string
   valor_total: number
   status: ProjetoStatus
   progresso?: number
-  contratos_vinculados?: 'CLT' | 'PJ'
+  contratos_vinculados?: ContratoVinculadoTipo | ContratoVinculadoTipo[]
   data_inicio?: string
   data_fim?: string
   parceiro?: string

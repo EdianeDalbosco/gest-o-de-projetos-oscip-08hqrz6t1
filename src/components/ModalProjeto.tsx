@@ -18,8 +18,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
 import { createProjeto, updateProjeto } from '@/services/api'
-import type { ProjetoRecord, ProjetoStatus } from '@/types'
+import type { ProjetoRecord, ProjetoStatus, ContratoVinculadoTipo } from '@/types'
 import { Loader2 } from 'lucide-react'
 
 interface ModalProjetoProps {
@@ -34,7 +35,7 @@ export function ModalProjeto({ open, onClose, onSuccess, projetoToEdit }: ModalP
   const [descricao, setDescricao] = useState('')
   const [valorTotal, setValorTotal] = useState<number | string>('')
   const [status, setStatus] = useState<ProjetoStatus>('ativo')
-  const [contratosVinculados, setContratosVinculados] = useState<'CLT' | 'PJ'>('CLT')
+  const [contratosVinculados, setContratosVinculados] = useState<ContratoVinculadoTipo[]>(['CLT'])
   const [parceiro, setParceiro] = useState('')
   const [dataInicio, setDataInicio] = useState('')
   const [dataFim, setDataFim] = useState('')
@@ -47,7 +48,18 @@ export function ModalProjeto({ open, onClose, onSuccess, projetoToEdit }: ModalP
       setDescricao(projetoToEdit.descricao || '')
       setValorTotal(projetoToEdit.valor_total || '')
       setStatus(projetoToEdit.status || 'ativo')
-      setContratosVinculados(projetoToEdit.contratos_vinculados || 'CLT')
+
+      const rawContratos = projetoToEdit.contratos_vinculados
+      if (Array.isArray(rawContratos)) {
+        setContratosVinculados(
+          rawContratos.length > 0 ? (rawContratos as ContratoVinculadoTipo[]) : ['CLT'],
+        )
+      } else if (rawContratos) {
+        setContratosVinculados([rawContratos as ContratoVinculadoTipo])
+      } else {
+        setContratosVinculados(['CLT'])
+      }
+
       setParceiro(projetoToEdit.parceiro || '')
       setDataInicio(projetoToEdit.data_inicio ? projetoToEdit.data_inicio.split('T')[0] : '')
       setDataFim(projetoToEdit.data_fim ? projetoToEdit.data_fim.split('T')[0] : '')
@@ -56,7 +68,7 @@ export function ModalProjeto({ open, onClose, onSuccess, projetoToEdit }: ModalP
       setDescricao('')
       setValorTotal('')
       setStatus('ativo')
-      setContratosVinculados('CLT')
+      setContratosVinculados(['CLT'])
       setParceiro('')
       setDataInicio(new Date().toISOString().split('T')[0])
       setDataFim('')
@@ -64,10 +76,25 @@ export function ModalProjeto({ open, onClose, onSuccess, projetoToEdit }: ModalP
     setErrors({})
   }, [projetoToEdit, open])
 
+  const toggleContrato = (tipo: ContratoVinculadoTipo) => {
+    setContratosVinculados((prev) => {
+      if (prev.includes(tipo)) {
+        // Não desmarcar tudo se quiser garantir pelo menos um ou permitir nenhum?
+        // Se permitir desmarcar, pode ficar vazio []. O usuário pode marcar o outro.
+        return prev.filter((item) => item !== tipo)
+      } else {
+        return [...prev, tipo]
+      }
+    })
+  }
+
   const validate = () => {
     const errs: Record<string, string> = {}
     if (!nome.trim()) errs.nome = 'Nome do projeto é obrigatório.'
     if (!valorTotal || Number(valorTotal) <= 0) errs.valorTotal = 'Informe um valor total válido.'
+    if (contratosVinculados.length === 0) {
+      errs.contratosVinculados = 'Selecione ao menos um tipo de contrato (CLT ou PJ).'
+    }
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -188,21 +215,47 @@ export function ModalProjeto({ open, onClose, onSuccess, projetoToEdit }: ModalP
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="contratosVinculados" className="text-xs font-semibold text-[#1E293B]">
-                Contratos Vinculados
+              <Label className="text-xs font-semibold text-[#1E293B] block">
+                Contratos Vinculados *
               </Label>
-              <Select
-                value={contratosVinculados}
-                onValueChange={(val) => setContratosVinculados(val as 'CLT' | 'PJ')}
-              >
-                <SelectTrigger id="contratosVinculados">
-                  <SelectValue placeholder="Selecione o tipo de contrato" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="CLT">CLT</SelectItem>
-                  <SelectItem value="PJ">PJ</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-3 pt-1">
+                <label
+                  htmlFor="check-clt"
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium cursor-pointer transition-colors ${
+                    contratosVinculados.includes('CLT')
+                      ? 'border-[#1FAF7A] bg-emerald-50 text-[#1FAF7A] font-semibold'
+                      : 'border-slate-200 bg-white text-[#64748B] hover:bg-slate-50'
+                  }`}
+                >
+                  <Checkbox
+                    id="check-clt"
+                    checked={contratosVinculados.includes('CLT')}
+                    onCheckedChange={() => toggleContrato('CLT')}
+                    className="data-[state=checked]:bg-[#1FAF7A] data-[state=checked]:border-[#1FAF7A]"
+                  />
+                  <span>CLT</span>
+                </label>
+
+                <label
+                  htmlFor="check-pj"
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium cursor-pointer transition-colors ${
+                    contratosVinculados.includes('PJ')
+                      ? 'border-[#1FAF7A] bg-emerald-50 text-[#1FAF7A] font-semibold'
+                      : 'border-slate-200 bg-white text-[#64748B] hover:bg-slate-50'
+                  }`}
+                >
+                  <Checkbox
+                    id="check-pj"
+                    checked={contratosVinculados.includes('PJ')}
+                    onCheckedChange={() => toggleContrato('PJ')}
+                    className="data-[state=checked]:bg-[#1FAF7A] data-[state=checked]:border-[#1FAF7A]"
+                  />
+                  <span>PJ</span>
+                </label>
+              </div>
+              {errors.contratosVinculados && (
+                <p className="text-xs text-red-500">{errors.contratosVinculados}</p>
+              )}
             </div>
           </div>
 

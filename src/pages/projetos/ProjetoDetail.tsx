@@ -139,9 +139,26 @@ export default function ProjetoDetail() {
       {/* Header do Projeto */}
       <div className="bg-white rounded-xl border border-[#E2E8F0] p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1.5">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-2xl font-bold text-[#1E293B] tracking-tight">{projeto.nome}</h1>
             <StatusBadge status={projeto.status} />
+            {(() => {
+              const raw = projeto.contratos_vinculados
+              if (!raw) return null
+              const list = Array.isArray(raw) ? raw : [raw]
+              const hasCLT = list.includes('CLT')
+              const hasPJ = list.includes('PJ')
+              let label = ''
+              if (hasCLT && hasPJ) label = 'Contratos: CLT + PJ'
+              else if (hasCLT) label = 'Contrato: CLT'
+              else if (hasPJ) label = 'Contrato: PJ'
+              if (!label) return null
+              return (
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  {label}
+                </span>
+              )
+            })()}
           </div>
           {projeto.parceiro && (
             <div className="flex items-center gap-1.5 text-xs text-[#64748B]">

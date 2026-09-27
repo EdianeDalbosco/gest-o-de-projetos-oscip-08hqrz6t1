@@ -73,6 +73,24 @@ export default function ProjetosList() {
     })
   }, [projetos, search, statusFilter])
 
+  const formatContratosBadge = (contratos?: string | string[]) => {
+    if (!contratos) return null
+    const list = Array.isArray(contratos) ? contratos : [contratos]
+    const hasCLT = list.includes('CLT')
+    const hasPJ = list.includes('PJ')
+
+    if (hasCLT && hasPJ) {
+      return 'Contratos: CLT + PJ'
+    }
+    if (hasCLT) {
+      return 'Contrato: CLT'
+    }
+    if (hasPJ) {
+      return 'Contrato: PJ'
+    }
+    return null
+  }
+
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation()
     if (window.confirm('Tem certeza que deseja excluir este projeto?')) {
@@ -207,9 +225,15 @@ export default function ProjetosList() {
                 {/* Contratos Vinculados Badge */}
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-[#64748B] font-medium">Contratos Vinculados</span>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    Contrato: {proj.contratos_vinculados || 'CLT'}
-                  </span>
+                  {formatContratosBadge(proj.contratos_vinculados) ? (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      {formatContratosBadge(proj.contratos_vinculados)}
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-[#94A3B8] italic">
+                      Sem contrato vinculado
+                    </span>
+                  )}
                 </div>
 
                 {/* Period & Total Budget */}
