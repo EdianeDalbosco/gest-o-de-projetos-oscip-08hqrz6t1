@@ -37,6 +37,7 @@ import {
 import { createContrato, getProjetos, getConvenios, getSecretarias } from '@/services/api'
 import { formatBRL, formatDateBR } from '@/components/StatusBadge'
 import { valorPorExtenso } from '@/lib/extenso'
+import { maskCnpj, maskCpf } from '@/lib/masks'
 import {
   ModeloContratoPJ,
   DadosContratoPJ,
@@ -691,8 +692,9 @@ ${nomeCLT || '[CONTRATADO]'}`
                     <Label className="text-xs font-semibold text-[#1E293B]">CNPJ *</Label>
                     <Input
                       value={cnpj}
-                      onChange={(e) => setCnpj(e.target.value)}
+                      onChange={(e) => setCnpj(maskCnpj(e.target.value))}
                       placeholder="00.000.000/0001-00"
+                      maxLength={18}
                       required
                     />
                   </div>
@@ -727,8 +729,9 @@ ${nomeCLT || '[CONTRATADO]'}`
                     </Label>
                     <Input
                       value={cpfRepresentante}
-                      onChange={(e) => setCpfRepresentante(e.target.value)}
+                      onChange={(e) => setCpfRepresentante(maskCpf(e.target.value))}
                       placeholder="000.000.000-00"
+                      maxLength={14}
                     />
                   </div>
                 </div>
@@ -1173,8 +1176,9 @@ ${nomeCLT || '[CONTRATADO]'}`
                   </Label>
                   <Input
                     value={documentoIdCLT}
-                    onChange={(e) => setDocumentoIdCLT(e.target.value)}
+                    onChange={(e) => setDocumentoIdCLT(maskCpf(e.target.value))}
                     placeholder="000.000.000-00"
+                    maxLength={14}
                   />
                 </div>
               </div>
