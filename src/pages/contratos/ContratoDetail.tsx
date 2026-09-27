@@ -12,6 +12,8 @@ import {
   ChevronDown,
   CheckCircle2,
   AlertTriangle,
+  Printer,
+  Download,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -81,8 +83,65 @@ export default function ContratoDetail() {
     .filter((a) => a.status === 'aprovada')
     .reduce((s, a) => s + (Number(a.valor_aprovado) || 0), 0)
 
+  const handlePrintContrato = () => {
+    window.print()
+  }
+
+  const handleDownloadTxt = () => {
+    if (!contrato) return
+    const text =
+      contrato.clausulas || `CONTRATO - ${contrato.nome}\nValor: ${formatBRL(contrato.valor)}`
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `Contrato_${contrato.tipo}_${(contrato.nome || 'Documento').replace(/\s+/g, '_')}.txt`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleDownloadDoc = () => {
+    if (!contrato) return
+    const text =
+      contrato.clausulas || `CONTRATO - ${contrato.nome}\nValor: ${formatBRL(contrato.valor)}`
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Contrato ${contrato.nome}</title><style>body{font-family:'Times New Roman',serif;font-size:11pt;line-height:1.5;margin:2cm;}</style></head><body><pre style="white-space:pre-wrap;font-family:'Times New Roman',serif;">${text}</pre></body></html>`
+    const blob = new Blob(['\ufeff' + html], { type: 'application/msword;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `Contrato_${contrato.tipo}_${(contrato.nome || 'Documento').replace(/\s+/g, '_')}.doc`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="space-y-6">
+      <style>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          .contrato-detail-print-area, .contrato-detail-print-area * {
+            visibility: visible;
+          }
+          .contrato-detail-print-area {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            margin: 0;
+            padding: 2cm !important;
+            color: #000 !important;
+            background: #fff !important;
+            box-shadow: none !important;
+            font-size: 11pt !important;
+            line-height: 1.5 !important;
+          }
+          .no-print {
+            display: none !important;
+          }
+        }
+      `}</style>
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-xs text-[#64748B]">
         <Link to="/contratos" className="hover:text-[#1FAF7A] inline-flex items-center">
@@ -114,13 +173,35 @@ export default function ContratoDetail() {
           </p>
         </div>
 
-        <Button
-          onClick={() => setEditModalOpen(true)}
-          className="bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs font-semibold shrink-0"
-        >
-          <Edit2 className="w-3.5 h-3.5 mr-1.5" />
-          Editar Contrato
-        </Button>
+        <div className="flex items-center gap-2 shrink-0 no-print">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handlePrintContrato}
+            className="text-xs font-semibold gap-1.5"
+          >
+            <Printer className="w-3.5 h-3.5 text-[#1FAF7A]" />
+            Imprimir
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDownloadDoc}
+            className="text-xs font-semibold gap-1.5"
+          >
+            <Download className="w-3.5 h-3.5 text-blue-600" />
+            Word (.doc)
+          </Button>
+
+          <Button
+            onClick={() => setEditModalOpen(true)}
+            className="bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs font-semibold"
+          >
+            <Edit2 className="w-3.5 h-3.5 mr-1.5" />
+            Editar Contrato
+          </Button>
+        </div>
       </div>
 
       {/* Cards de Informações Chave */}
@@ -247,64 +328,95 @@ export default function ContratoDetail() {
         </Card>
       )}
 
-      {/* Cláusulas Contratuais (Expandíveis) */}
+      {/* Cláusulas Contratuais / Instrumento Formal Completo */}
       <Card className="border-[#E2E8F0]">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-bold text-[#1E293B]">
-            Cláusulas Contratuais & Termos Jurídicos
-          </CardTitle>
-          <CardDescription className="text-xs text-[#64748B]">
-            Instrumento formal, obrigações de confidencialidade, vigência e rescisão
-          </CardDescription>
+        <CardHeader className="pb-3 flex flex-row items-center justify-between no-print">
+          <div>
+            <CardTitle className="text-base font-bold text-[#1E293B]">
+              Instrumento Jurídico do Contrato ({contrato.tipo})
+            </CardTitle>
+            <CardDescription className="text-xs text-[#64748B]">
+              {contrato.clausulas
+                ? 'Texto formal completo do contrato com cláusulas e dados cadastrais'
+                : 'Cláusulas padronizadas e termos de execução'}
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadTxt}
+              className="text-xs gap-1"
+            >
+              <FileText className="w-3.5 h-3.5 text-slate-600" />
+              Baixar .TXT
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePrintContrato}
+              className="text-xs gap-1 text-[#1FAF7A] border-[#1FAF7A]/30"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              Imprimir
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
-          <Accordion type="single" collapsible defaultValue="item-1">
-            <AccordionItem value="item-1" className="border-slate-200">
-              <AccordionTrigger className="text-xs font-semibold text-[#1E293B] hover:text-[#1FAF7A]">
-                Cláusula 1ª — Do Objeto e Atribuições
-              </AccordionTrigger>
-              <AccordionContent className="text-xs text-[#64748B] leading-relaxed pt-1">
-                {contrato.clausulas ||
-                  `O presente instrumento tem por objetivo a prestação de serviços e execução das atividades correspondentes à função de ${contrato.cargo_funcao}, vinculadas às finalidades estatutárias da organização e convênios correlatos.`}
-              </AccordionContent>
-            </AccordionItem>
+          {contrato.clausulas ? (
+            <div className="contrato-detail-print-area bg-[#FAFBFD] border border-slate-200 rounded-xl p-6 sm:p-8 font-serif text-[#1E293B] leading-relaxed text-xs sm:text-[13px] whitespace-pre-wrap select-text max-h-[500px] overflow-y-auto print:max-h-none print:overflow-visible print:border-none print:bg-white print:p-0">
+              {contrato.clausulas}
+            </div>
+          ) : (
+            <Accordion type="single" collapsible defaultValue="item-1">
+              <AccordionItem value="item-1" className="border-slate-200">
+                <AccordionTrigger className="text-xs font-semibold text-[#1E293B] hover:text-[#1FAF7A]">
+                  Cláusula 1ª — Do Objeto e Atribuições
+                </AccordionTrigger>
+                <AccordionContent className="text-xs text-[#64748B] leading-relaxed pt-1">
+                  O presente instrumento tem por objetivo a prestação de serviços e execução das
+                  atividades correspondentes à função de {contrato.cargo_funcao}, vinculadas às
+                  finalidades estatutárias da organização e convênios correlatos.
+                </AccordionContent>
+              </AccordionItem>
 
-            <AccordionItem value="item-2" className="border-slate-200">
-              <AccordionTrigger className="text-xs font-semibold text-[#1E293B] hover:text-[#1FAF7A]">
-                Cláusula 2ª — Da Remuneração e Forma de Pagamento
-              </AccordionTrigger>
-              <AccordionContent className="text-xs text-[#64748B] leading-relaxed pt-1">
-                A remuneração foi ajustada no valor de {formatBRL(contrato.valor)}{' '}
-                {contrato.tipo === 'PJ' && contrato.tipo_pj === 'horas'
-                  ? 'por hora de dedicação técnica efetivamente comprovada'
-                  : 'mensais'}
-                , mediante emissão de documento comprobatório e validação pela coordenação
-                administrativa.
-              </AccordionContent>
-            </AccordionItem>
+              <AccordionItem value="item-2" className="border-slate-200">
+                <AccordionTrigger className="text-xs font-semibold text-[#1E293B] hover:text-[#1FAF7A]">
+                  Cláusula 2ª — Da Remuneração e Forma de Pagamento
+                </AccordionTrigger>
+                <AccordionContent className="text-xs text-[#64748B] leading-relaxed pt-1">
+                  A remuneração foi ajustada no valor de {formatBRL(contrato.valor)}{' '}
+                  {contrato.tipo === 'PJ' && contrato.tipo_pj === 'horas'
+                    ? 'por hora de dedicação técnica efetivamente comprovada'
+                    : 'mensais'}
+                  , mediante emissão de documento comprobatório e validação pela coordenação
+                  administrativa.
+                </AccordionContent>
+              </AccordionItem>
 
-            <AccordionItem value="item-3" className="border-slate-200">
-              <AccordionTrigger className="text-xs font-semibold text-[#1E293B] hover:text-[#1FAF7A]">
-                Cláusula 3ª — Da Confidencialidade e Proteção de Dados (LGPD)
-              </AccordionTrigger>
-              <AccordionContent className="text-xs text-[#64748B] leading-relaxed pt-1">
-                O contratado obriga-se a manter sob sigilo absoluto todas as informações
-                estratégicas, dados de beneficiários sociais, relatórios e documentos da organização
-                aos quais tiver acesso durante e após a vigência deste contrato.
-              </AccordionContent>
-            </AccordionItem>
+              <AccordionItem value="item-3" className="border-slate-200">
+                <AccordionTrigger className="text-xs font-semibold text-[#1E293B] hover:text-[#1FAF7A]">
+                  Cláusula 3ª — Da Confidencialidade e Proteção de Dados (LGPD)
+                </AccordionTrigger>
+                <AccordionContent className="text-xs text-[#64748B] leading-relaxed pt-1">
+                  O contratado obriga-se a manter sob sigilo absoluto todas as informações
+                  estratégicas, dados de beneficiários sociais, relatórios e documentos da
+                  organização aos quais tiver acesso durante e após a vigência deste contrato.
+                </AccordionContent>
+              </AccordionItem>
 
-            <AccordionItem value="item-4" className="border-slate-200">
-              <AccordionTrigger className="text-xs font-semibold text-[#1E293B] hover:text-[#1FAF7A]">
-                Cláusula 4ª — Da Rescisão Contratual
-              </AccordionTrigger>
-              <AccordionContent className="text-xs text-[#64748B] leading-relaxed pt-1">
-                O presente contrato poderá ser rescindido por qualquer das partes mediante aviso
-                prévio formal e escrito de no mínimo 30 (trinta) dias, ou imediatamente por
-                descumprimento de quaisquer das disposições pactuadas.
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+              <AccordionItem value="item-4" className="border-slate-200">
+                <AccordionTrigger className="text-xs font-semibold text-[#1E293B] hover:text-[#1FAF7A]">
+                  Cláusula 4ª — Da Rescisão Contratual
+                </AccordionTrigger>
+                <AccordionContent className="text-xs text-[#64748B] leading-relaxed pt-1">
+                  O presente contrato poderá ser rescindido por qualquer das partes mediante aviso
+                  prévio formal e escrito de no mínimo 30 (trinta) dias, ou imediatamente por
+                  descumprimento de quaisquer das disposições pactuadas.
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          )}
         </CardContent>
       </Card>
 
