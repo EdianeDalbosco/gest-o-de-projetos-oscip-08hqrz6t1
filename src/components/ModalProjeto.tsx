@@ -113,7 +113,7 @@ export function ModalProjeto({ open, onClose, onSuccess, projetoToEdit }: ModalP
       <DialogContent className="sm:max-w-[540px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-lg font-bold text-[#1E293B]">
-            {projetoToEdit ? 'Editar Projeto' : 'Novo Projeto Social'}
+            {projetoToEdit ? 'Editar Projeto' : 'Novo Projeto'}
           </DialogTitle>
           <DialogDescription className="text-xs text-[#64748B]">
             Preencha as informações gerais do convênio ou iniciativa institucional.
