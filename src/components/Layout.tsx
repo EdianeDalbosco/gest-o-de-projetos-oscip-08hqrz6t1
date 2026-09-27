@@ -53,19 +53,19 @@ const navSections: NavSection[] = [
     ],
   },
   {
-    title: 'Financeiro',
-    items: [
-      { label: 'Faturamento', path: '/faturamento', icon: Receipt },
-      { label: 'Gestão Financeira', path: '/financeiro', icon: PieChart },
-    ],
-  },
-  {
     title: 'Contratos & Equipe',
     items: [
       { label: 'Prestadores & Colaboradores', path: '/prestadores', icon: Users2 },
       { label: 'Contratos CLT/PJ', path: '/contratos', icon: FileSignature },
       { label: 'Atividades Prestadores', path: '/atividades', icon: CalendarCheck2 },
       { label: 'Elaborar Contrato', path: '/contratos/novo/elaborar', icon: FileSignature },
+    ],
+  },
+  {
+    title: 'Financeiro',
+    items: [
+      { label: 'Faturamento', path: '/faturamento', icon: Receipt },
+      { label: 'Gestão Financeira', path: '/financeiro', icon: PieChart },
     ],
   },
 ]
