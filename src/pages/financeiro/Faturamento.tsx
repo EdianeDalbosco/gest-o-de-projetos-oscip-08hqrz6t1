@@ -258,8 +258,22 @@ Emitido eletronicamente via Sistema ONG Gestão.
       <Card className="border-[#E2E8F0] shadow-sm overflow-hidden">
         <CardContent className="p-0">
           {filteredFaturas.length === 0 ? (
-            <div className="text-center py-12 text-xs text-[#64748B]">
-              Nenhuma fatura encontrada com os filtros selecionados.
+            <div className="text-center py-16 px-4 space-y-3">
+              <div className="w-12 h-12 rounded-full bg-emerald-50 text-[#1FAF7A] flex items-center justify-center mx-auto">
+                <FileText className="w-6 h-6" />
+              </div>
+              <h3 className="text-sm font-bold text-[#1E293B]">Nenhuma fatura emitida</h3>
+              <p className="text-xs text-[#64748B] max-w-sm mx-auto">
+                Emita faturas de convênios, contratos ou termos de parceria para controle de
+                recebíveis e prestação de contas.
+              </p>
+              <Button
+                onClick={() => setModalOpen(true)}
+                className="bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs font-semibold"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" />
+                Emitir Primeira Fatura
+              </Button>
             </div>
           ) : (
             <div className="overflow-x-auto">

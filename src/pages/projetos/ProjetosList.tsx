@@ -158,19 +158,20 @@ export default function ProjetosList() {
       {filteredProjetos.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-[#CBD5E1] p-8">
           <FolderKanban className="w-12 h-12 text-[#94A3B8] mx-auto mb-3" />
-          <h3 className="text-sm font-bold text-[#1E293B]">Nenhum projeto encontrado</h3>
-          <p className="text-xs text-[#64748B] mt-1 max-w-sm mx-auto">
-            Não foram localizados projetos com os filtros atuais. Crie um novo projeto para começar.
+          <h3 className="text-sm font-bold text-[#1E293B]">Nenhum projeto cadastrado</h3>
+          <p className="text-xs text-[#64748B] mt-1 max-w-md mx-auto">
+            Cadastre seu primeiro projeto social para gerenciar cronograma, contratos, prestadores e
+            metas.
           </p>
           <Button
             onClick={() => {
               setEditingProjeto(null)
               setModalOpen(true)
             }}
-            className="mt-4 bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs"
+            className="mt-4 bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs font-semibold shadow-sm"
           >
             <Plus className="w-3.5 h-3.5 mr-1" />
-            Adicionar Projeto
+            Cadastrar Primeiro Projeto
           </Button>
         </div>
       ) : (

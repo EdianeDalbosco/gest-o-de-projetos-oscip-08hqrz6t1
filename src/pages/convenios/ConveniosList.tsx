@@ -240,20 +240,22 @@ export default function ConveniosList() {
       ) : filteredConvenios.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-[#CBD5E1] p-8">
           <Landmark className="w-12 h-12 text-[#94A3B8] mx-auto mb-3" />
-          <h3 className="text-sm font-bold text-[#1E293B]">Nenhum instrumento encontrado</h3>
-          <p className="text-xs text-[#64748B] mt-1 max-w-sm mx-auto">
-            Não foram localizados instrumentos com os filtros selecionados. Crie um novo instrumento
-            municipal para começar.
+          <h3 className="text-sm font-bold text-[#1E293B]">
+            Nenhum instrumento municipal cadastrado
+          </h3>
+          <p className="text-xs text-[#64748B] mt-1 max-w-md mx-auto">
+            Cadastre seu primeiro Termo de Parceria, Convênio ou Acordo de Cooperação Técnica com a
+            prefeitura municipal.
           </p>
           <Button
             onClick={() => {
               setEditingConvenio(null)
               setModalOpen(true)
             }}
-            className="mt-4 bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs"
+            className="mt-4 bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs font-semibold shadow-sm"
           >
             <Plus className="w-3.5 h-3.5 mr-1" />
-            Novo Instrumento
+            Cadastrar Primeiro Instrumento
           </Button>
         </div>
       ) : (

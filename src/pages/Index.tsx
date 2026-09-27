@@ -162,7 +162,7 @@ export default function Index() {
   }, [despesas])
 
   const caixaRatio =
-    totalReceitas > 0 ? Math.min(100, Math.round((totalDespesas / totalReceitas) * 100)) : 50
+    totalReceitas > 0 ? Math.min(100, Math.round((totalDespesas / totalReceitas) * 100)) : 0
 
   // 4. Últimas 3 transações
   const ultimasTransacoes = useMemo(() => {
@@ -257,12 +257,12 @@ export default function Index() {
             </div>
             <div className="mt-2 flex items-baseline gap-2">
               <span className="text-2xl font-bold tracking-tight text-[#1E293B] tabular-nums">
-                {formatBRL(faturamentoMes || 46500)}
+                {formatBRL(faturamentoMes)}
               </span>
             </div>
-            <div className="mt-2.5 flex items-center text-xs text-emerald-600 font-medium">
-              <TrendingUp className="w-3.5 h-3.5 mr-1" />
-              <span>+14.8% vs. mês anterior</span>
+            <div className="mt-2.5 flex items-center text-xs text-[#64748B] font-medium">
+              <TrendingUp className="w-3.5 h-3.5 mr-1 text-[#1FAF7A]" />
+              <span>{faturamentoMes > 0 ? 'Faturamento apurado' : 'Aguardando faturamentos'}</span>
             </div>
           </CardContent>
         </Card>
@@ -286,7 +286,11 @@ export default function Index() {
             </div>
             <div className="mt-2.5 flex items-center text-xs text-[#64748B]">
               <span className="inline-block w-2 h-2 rounded-full bg-[#1FAF7A] mr-1.5" />
-              <span>2 CLT e 2 PJ em vigência</span>
+              <span>
+                {contratosAtivosCount === 0
+                  ? 'Nenhum contrato ativo'
+                  : `${contratosAtivosCount} em vigência`}
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -304,12 +308,17 @@ export default function Index() {
             </div>
             <div className="mt-2 flex items-baseline gap-2">
               <span className="text-2xl font-bold tracking-tight text-[#1E293B] tabular-nums">
-                {formatBRL(valorAReceber || 56300)}
+                {formatBRL(valorAReceber)}
               </span>
             </div>
             <div className="mt-2.5 flex items-center text-xs text-amber-700 font-medium">
               <AlertCircle className="w-3.5 h-3.5 mr-1" />
-              <span>3 faturas pendentes de liquidação</span>
+              <span>
+                {faturas.filter((f) => f.status === 'emitida' || f.status === 'vencida').length ===
+                0
+                  ? 'Sem pendências a receber'
+                  : `${faturas.filter((f) => f.status === 'emitida' || f.status === 'vencida').length} fatura(s) pendente(s)`}
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -333,7 +342,12 @@ export default function Index() {
             </div>
             <div className="mt-2.5 flex items-center text-xs text-purple-700 font-medium">
               <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
-              <span>18h aprovadas com sucesso</span>
+              <span>
+                {atividades
+                  .filter((a) => a.status === 'aprovada')
+                  .reduce((s, a) => s + (Number(a.horas) || 0), 0)}
+                h aprovadas
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -418,8 +432,8 @@ export default function Index() {
                 />
               </div>
               <div className="flex justify-between text-[11px] text-[#94A3B8] mt-1">
-                <span>Despesas: {formatBRL(totalDespesas || 22250)}</span>
-                <span>Receitas: {formatBRL(totalReceitas || 28500)}</span>
+                <span>Despesas: {formatBRL(totalDespesas)}</span>
+                <span>Receitas: {formatBRL(totalReceitas)}</span>
               </div>
             </div>
 
@@ -429,28 +443,34 @@ export default function Index() {
                 Últimas Transações
               </span>
               <div className="space-y-2">
-                {ultimasTransacoes.map((tx) => (
-                  <div
-                    key={tx.id}
-                    className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-100 text-xs"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span
-                        className={`w-2 h-2 rounded-full shrink-0 ${
-                          tx.tipo === 'receita' ? 'bg-emerald-500' : 'bg-rose-500'
-                        }`}
-                      />
-                      <span className="font-medium text-[#1E293B] truncate">{tx.descricao}</span>
-                    </div>
-                    <span
-                      className={`font-semibold tabular-nums shrink-0 ml-2 ${
-                        tx.tipo === 'receita' ? 'text-emerald-700' : 'text-rose-700'
-                      }`}
-                    >
-                      {tx.tipo === 'receita' ? '+' : '-'} {formatBRL(tx.valor)}
-                    </span>
+                {ultimasTransacoes.length === 0 ? (
+                  <div className="p-3 rounded-lg bg-slate-50 border border-slate-100 text-center text-xs text-[#94A3B8]">
+                    Nenhuma movimentação registrada ainda.
                   </div>
-                ))}
+                ) : (
+                  ultimasTransacoes.map((tx) => (
+                    <div
+                      key={tx.id}
+                      className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-100 text-xs"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className={`w-2 h-2 rounded-full shrink-0 ${
+                            tx.tipo === 'receita' ? 'bg-emerald-500' : 'bg-rose-500'
+                          }`}
+                        />
+                        <span className="font-medium text-[#1E293B] truncate">{tx.descricao}</span>
+                      </div>
+                      <span
+                        className={`font-semibold tabular-nums shrink-0 ml-2 ${
+                          tx.tipo === 'receita' ? 'text-emerald-700' : 'text-rose-700'
+                        }`}
+                      >
+                        {tx.tipo === 'receita' ? '+' : '-'} {formatBRL(tx.valor)}
+                      </span>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
@@ -492,57 +512,71 @@ export default function Index() {
           </Button>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-[#E2E8F0] text-[#64748B] font-semibold">
-                  <th className="pb-3 pl-2">Nome do Projeto</th>
-                  <th className="pb-3 px-3">Parceiro / Fomentador</th>
-                  <th className="pb-3 px-3">Status</th>
-                  <th className="pb-3 px-3">Progresso</th>
-                  <th className="pb-3 px-3">Valor do Contrato</th>
-                  <th className="pb-3 pr-2 text-right">Ação</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#F1F5F9]">
-                {projetos.slice(0, 5).map((p) => (
-                  <tr
-                    key={p.id}
-                    className="hover:bg-slate-50 transition-colors group cursor-pointer"
-                  >
-                    <td className="py-3 pl-2 font-semibold text-[#1E293B]">
-                      <Link to={`/projetos/${p.id}`} className="hover:text-[#1FAF7A]">
-                        {p.nome}
-                      </Link>
-                    </td>
-                    <td className="py-3 px-3 text-[#64748B]">{p.parceiro || '—'}</td>
-                    <td className="py-3 px-3">
-                      <StatusBadge status={p.status} />
-                    </td>
-                    <td className="py-3 px-3 w-40">
-                      <div className="flex items-center gap-2">
-                        <Progress value={p.progresso || 0} className="h-2 flex-1" />
-                        <span className="font-mono text-[11px] text-[#64748B]">
-                          {p.progresso || 0}%
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-3 font-semibold text-[#1E293B] tabular-nums">
-                      {formatBRL(p.valor_total)}
-                    </td>
-                    <td className="py-3 pr-2 text-right">
-                      <Button asChild size="sm" variant="ghost" className="h-7 px-2 text-[#1FAF7A]">
-                        <Link to={`/projetos/${p.id}`}>
-                          Ver detalhes
-                          <ExternalLink className="w-3.5 h-3.5 ml-1" />
-                        </Link>
-                      </Button>
-                    </td>
+          {projetos.length === 0 ? (
+            <div className="text-center py-8 text-xs text-[#64748B]">
+              <p>Nenhum projeto cadastrado no momento.</p>
+              <Button asChild size="sm" className="mt-3 bg-[#1FAF7A] hover:bg-[#179C6E] text-white">
+                <Link to="/projetos">Cadastrar Primeiro Projeto</Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-[#E2E8F0] text-[#64748B] font-semibold">
+                    <th className="pb-3 pl-2">Nome do Projeto</th>
+                    <th className="pb-3 px-3">Parceiro / Fomentador</th>
+                    <th className="pb-3 px-3">Status</th>
+                    <th className="pb-3 px-3">Progresso</th>
+                    <th className="pb-3 px-3">Valor do Contrato</th>
+                    <th className="pb-3 pr-2 text-right">Ação</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-[#F1F5F9]">
+                  {projetos.slice(0, 5).map((p) => (
+                    <tr
+                      key={p.id}
+                      className="hover:bg-slate-50 transition-colors group cursor-pointer"
+                    >
+                      <td className="py-3 pl-2 font-semibold text-[#1E293B]">
+                        <Link to={`/projetos/${p.id}`} className="hover:text-[#1FAF7A]">
+                          {p.nome}
+                        </Link>
+                      </td>
+                      <td className="py-3 px-3 text-[#64748B]">{p.parceiro || '—'}</td>
+                      <td className="py-3 px-3">
+                        <StatusBadge status={p.status} />
+                      </td>
+                      <td className="py-3 px-3 w-40">
+                        <div className="flex items-center gap-2">
+                          <Progress value={p.progresso || 0} className="h-2 flex-1" />
+                          <span className="font-mono text-[11px] text-[#64748B]">
+                            {p.progresso || 0}%
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-3 font-semibold text-[#1E293B] tabular-nums">
+                        {formatBRL(p.valor_total)}
+                      </td>
+                      <td className="py-3 pr-2 text-right">
+                        <Button
+                          asChild
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-[#1FAF7A]"
+                        >
+                          <Link to={`/projetos/${p.id}`}>
+                            Ver detalhes
+                            <ExternalLink className="w-3.5 h-3.5 ml-1" />
+                          </Link>
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
 

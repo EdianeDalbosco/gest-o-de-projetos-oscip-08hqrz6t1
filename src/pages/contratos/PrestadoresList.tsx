@@ -193,12 +193,27 @@ export default function PrestadoresList() {
           {loading ? (
             <div className="py-12 text-center text-xs text-[#64748B]">Carregando cadastros...</div>
           ) : filtered.length === 0 ? (
-            <div className="py-12 text-center text-xs text-[#64748B] space-y-2">
-              <p>Nenhum prestador ou colaborador encontrado.</p>
-              <p className="text-[11px] text-[#94A3B8]">
-                Utilize o botão &ldquo;Novo Cadastro&rdquo; acima ou a importação em lote de
-                planilha Excel na elaboração de contratos.
+            <div className="py-16 text-center text-xs text-[#64748B] space-y-3 px-4">
+              <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center mx-auto">
+                <Users2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-sm font-bold text-[#1E293B]">
+                Nenhum prestador ou colaborador cadastrado
+              </h3>
+              <p className="text-xs text-[#64748B] max-w-md mx-auto">
+                Cadastre profissionais PJ (médicos, empresas parceiras) ou colaboradores CLT para
+                vincular ao Termo de Parceria e gerar faturamentos mensais.
               </p>
+              <Button
+                onClick={() => {
+                  setPrestadorToEdit(null)
+                  setModalOpen(true)
+                }}
+                className="bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs font-semibold"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" />
+                Cadastrar Primeiro Prestador/Colaborador
+              </Button>
             </div>
           ) : (
             <div className="overflow-x-auto">

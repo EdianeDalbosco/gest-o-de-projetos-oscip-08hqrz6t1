@@ -228,8 +228,22 @@ export default function AtividadesList() {
       <Card className="border-[#E2E8F0] shadow-sm overflow-hidden">
         <CardContent className="p-0">
           {filteredAtividades.length === 0 ? (
-            <div className="text-center py-12 text-xs text-[#64748B]">
-              Nenhuma atividade encontrada com os filtros selecionados.
+            <div className="text-center py-16 px-4 space-y-3">
+              <div className="w-12 h-12 rounded-full bg-emerald-50 text-[#1FAF7A] flex items-center justify-center mx-auto">
+                <CalendarCheck2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-sm font-bold text-[#1E293B]">Nenhuma atividade registrada</h3>
+              <p className="text-xs text-[#64748B] max-w-sm mx-auto">
+                Lance as horas trabalhadas e entregas dos prestadores PJ para aprovação da
+                coordenação e cálculo de faturamento.
+              </p>
+              <Button
+                onClick={() => setModalOpen(true)}
+                className="bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs font-semibold"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" />
+                Registrar Primeira Atividade
+              </Button>
             </div>
           ) : (
             <div className="overflow-x-auto">

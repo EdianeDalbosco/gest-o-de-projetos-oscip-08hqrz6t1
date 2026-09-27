@@ -35,8 +35,8 @@ export default function GestaoFinanceira() {
   const [faturas, setFaturas] = useState<FaturaRecord[]>([])
   const [faturamentosMensais, setFaturamentosMensais] = useState<FaturamentoMensalRecord[]>([])
   const [despesas, setDespesas] = useState<DespesaRecord[]>([])
-  const [mesSelecionado, setMesSelecionado] = useState<number>(7) // 0-based: 7 = Agosto
-  const [anoSelecionado, setAnoSelecionado] = useState<number>(2026)
+  const [mesSelecionado, setMesSelecionado] = useState<number>(new Date().getMonth())
+  const [anoSelecionado, setAnoSelecionado] = useState<number>(new Date().getFullYear())
   const [categoriaFilter, setCategoriaFilter] = useState<string>('todos')
   const [modalOpen, setModalOpen] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -525,9 +525,23 @@ export default function GestaoFinanceira() {
 
         <CardContent className="p-0">
           {transacoes.length === 0 ? (
-            <div className="text-center py-12 text-xs text-[#64748B]">
-              Nenhuma transação registrada para o mês de {months[mesSelecionado]} de{' '}
-              {anoSelecionado}.
+            <div className="text-center py-16 px-4 space-y-3">
+              <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center mx-auto">
+                <DollarSign className="w-6 h-6" />
+              </div>
+              <h3 className="text-sm font-bold text-[#1E293B]">Nenhuma movimentação registrada</h3>
+              <p className="text-xs text-[#64748B] max-w-sm mx-auto">
+                Não há despesas ou recebimentos registrados para {months[mesSelecionado]} de{' '}
+                {anoSelecionado}. Lance despesas operacionais ou fature instrumentos para alimentar
+                o fluxo de caixa.
+              </p>
+              <Button
+                onClick={() => setModalOpen(true)}
+                className="bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs font-semibold"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" />
+                Lançar Despesa
+              </Button>
             </div>
           ) : (
             <div className="overflow-x-auto">
