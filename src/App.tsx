@@ -17,6 +17,8 @@ import ConfirmEmailChange from './pages/auth/ConfirmEmailChange'
 
 import ProjetosList from './pages/projetos/ProjetosList'
 import ProjetoDetail from './pages/projetos/ProjetoDetail'
+import ConveniosList from './pages/convenios/ConveniosList'
+import ConvenioDetail from './pages/convenios/ConvenioDetail'
 import Faturamento from './pages/financeiro/Faturamento'
 import GestaoFinanceira from './pages/financeiro/GestaoFinanceira'
 import ContratosList from './pages/contratos/ContratosList'
@@ -49,6 +51,8 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/projetos" element={<ProjetosList />} />
             <Route path="/projetos/:id" element={<ProjetoDetail />} />
+            <Route path="/convenios" element={<ConveniosList />} />
+            <Route path="/convenios/:id" element={<ConvenioDetail />} />
             <Route path="/faturamento" element={<Faturamento />} />
             <Route path="/financeiro" element={<GestaoFinanceira />} />
             <Route path="/contratos" element={<ContratosList />} />

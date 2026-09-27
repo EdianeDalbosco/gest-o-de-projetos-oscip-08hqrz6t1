@@ -18,8 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { createAtividade, getContratos } from '@/services/api'
-import type { ContratoRecord, AtividadeRecord } from '@/types'
+import { createAtividade, getContratos, getPlanosTrabalho } from '@/services/api'
+import type { ContratoRecord, AtividadeRecord, PlanoTrabalhoRecord } from '@/types'
 import { Loader2 } from 'lucide-react'
 
 interface ModalNovaAtividadeProps {
@@ -27,6 +27,7 @@ interface ModalNovaAtividadeProps {
   onClose: () => void
   onSuccess: () => void
   defaultProjetoId?: string
+  defaultPlanoTrabalhoId?: string
 }
 
 export function ModalNovaAtividade({
@@ -34,9 +35,12 @@ export function ModalNovaAtividade({
   onClose,
   onSuccess,
   defaultProjetoId,
+  defaultPlanoTrabalhoId,
 }: ModalNovaAtividadeProps) {
   const [prestadores, setPrestadores] = useState<ContratoRecord[]>([])
   const [prestadorId, setPrestadorId] = useState('')
+  const [planosTrabalho, setPlanosTrabalho] = useState<PlanoTrabalhoRecord[]>([])
+  const [planoTrabalhoId, setPlanoTrabalhoId] = useState<string>('')
   const [descricao, setDescricao] = useState('')
   const [data, setData] = useState(new Date().toISOString().split('T')[0])
   const [horas, setHoras] = useState<number | string>('')
@@ -45,17 +49,18 @@ export function ModalNovaAtividade({
 
   useEffect(() => {
     if (open) {
-      getContratos()
-        .then((data) => {
-          // Filter PJ only as per specification
-          const pjs = data.filter((c) => c.tipo === 'PJ')
+      Promise.all([getContratos(), getPlanosTrabalho()])
+        .then(([contratosData, planosData]) => {
+          const pjs = contratosData.filter((c) => c.tipo === 'PJ')
           setPrestadores(pjs)
           if (pjs.length > 0 && !prestadorId) {
             setPrestadorId(pjs[0].id)
           }
+          setPlanosTrabalho(planosData)
         })
         .catch(console.error)
 
+      setPlanoTrabalhoId(defaultPlanoTrabalhoId || '')
       setDescricao('')
       setHoras('')
       setData(new Date().toISOString().split('T')[0])
@@ -95,6 +100,7 @@ export function ModalNovaAtividade({
       await createAtividade({
         prestador_id: prestadorId,
         projeto_id: defaultProjetoId,
+        plano_trabalho_id: planoTrabalhoId || undefined,
         descricao: descricao.trim(),
         data: new Date(data).toISOString(),
         horas: Number(horas),
@@ -150,6 +156,30 @@ export function ModalNovaAtividade({
             </Select>
             {errors.prestador && <p className="text-xs text-red-500">{errors.prestador}</p>}
           </div>
+
+          {planosTrabalho.length > 0 && (
+            <div className="space-y-1.5">
+              <Label htmlFor="planoTrabalho" className="text-xs font-semibold text-[#1E293B]">
+                Vincular a Plano de Trabalho (Convênio Municipal)
+              </Label>
+              <Select
+                value={planoTrabalhoId}
+                onValueChange={(val) => setPlanoTrabalhoId(val === 'nenhum' ? '' : val)}
+              >
+                <SelectTrigger id="planoTrabalho">
+                  <SelectValue placeholder="Opcional: selecione o plano de trabalho" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="nenhum">Nenhum (avulso do projeto)</SelectItem>
+                  {planosTrabalho.map((pl) => (
+                    <SelectItem key={pl.id} value={pl.id}>
+                      {pl.titulo} ({pl.expand?.secretaria_id?.nome || 'Secretaria'})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">

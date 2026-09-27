@@ -45,6 +45,7 @@ export type AtividadeStatus = 'pendente' | 'aprovada' | 'rejeitada'
 export interface AtividadeRecord extends RecordModel {
   prestador_id: string
   projeto_id: string
+  plano_trabalho_id?: string
   descricao: string
   data: string
   horas: number
@@ -53,6 +54,7 @@ export interface AtividadeRecord extends RecordModel {
   expand?: {
     prestador_id?: ContratoRecord
     projeto_id?: ProjetoRecord
+    plano_trabalho_id?: PlanoTrabalhoRecord
   }
 }
 
@@ -80,4 +82,60 @@ export interface DespesaRecord extends RecordModel {
   descricao: string
   valor: number
   data: string
+}
+
+// CONVÊNIOS MUNICIPAIS & ESTRUTURA HIERÁRQUICA
+export type ConvenioStatus = 'ativo' | 'encerrado' | 'suspenso'
+
+export interface ConvenioRecord extends RecordModel {
+  nome: string
+  municipio: string
+  numero_instrumento: string
+  orgao_contratante?: string
+  valor_global: number
+  data_inicio?: string
+  data_fim?: string
+  status: ConvenioStatus
+  observacoes?: string
+}
+
+export interface SecretariaRecord extends RecordModel {
+  nome: string
+  convenio_id: string
+  responsavel?: string
+  observacoes?: string
+  expand?: {
+    convenio_id?: ConvenioRecord
+  }
+}
+
+export type PlanoTrabalhoStatus = 'ativo' | 'em_analise' | 'concluido' | 'suspenso'
+
+export interface PlanoTrabalhoRecord extends RecordModel {
+  titulo: string
+  secretaria_id: string
+  convenio_id?: string
+  valor_previsto: number
+  valor_empenhado?: number
+  valor_executado?: number
+  periodo?: string
+  status: PlanoTrabalhoStatus
+  descricao?: string
+  expand?: {
+    secretaria_id?: SecretariaRecord
+    convenio_id?: ConvenioRecord
+  }
+}
+
+export type MetaStatus = 'nao_iniciada' | 'em_andamento' | 'concluida' | 'cancelada'
+
+export interface MetaRecord extends RecordModel {
+  plano_trabalho_id: string
+  descricao: string
+  quantidade_alvo?: number
+  quantidade_realizada?: number
+  status: MetaStatus
+  expand?: {
+    plano_trabalho_id?: PlanoTrabalhoRecord
+  }
 }

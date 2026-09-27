@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext'
 import {
   LayoutDashboard,
   FolderKanban,
+  Landmark,
   Receipt,
   PieChart,
   Users2,
@@ -46,7 +47,10 @@ const navSections: NavSection[] = [
   },
   {
     title: 'Projetos',
-    items: [{ label: 'Lista de Projetos', path: '/projetos', icon: FolderKanban }],
+    items: [
+      { label: 'Lista de Projetos', path: '/projetos', icon: FolderKanban },
+      { label: 'Convênios', path: '/convenios', icon: Landmark },
+    ],
   },
   {
     title: 'Financeiro',
@@ -78,6 +82,8 @@ export default function Layout() {
     if (path.startsWith('/projetos/novo')) return 'Novo Projeto'
     if (path.startsWith('/projetos/') && path !== '/projetos') return 'Detalhes do Projeto'
     if (path === '/projetos') return 'Projetos'
+    if (path.startsWith('/convenios/') && path !== '/convenios') return 'Detalhes do Convênio'
+    if (path === '/convenios') return 'Convênios Municipais'
     if (path === '/faturamento') return 'Faturamento & Faturas'
     if (path === '/financeiro') return 'Gestão Financeira Mensal'
     if (path === '/contratos/novo/elaborar') return 'Elaboração de Contrato'
@@ -88,6 +94,7 @@ export default function Layout() {
   }
 
   const isProjetosPage = location.pathname === '/projetos'
+  const isConveniosPage = location.pathname === '/convenios'
 
   const userInitials = (user?.name || user?.email || 'AD')
     .split(' ')
@@ -329,6 +336,19 @@ export default function Layout() {
               >
                 <Plus className="w-4 h-4 mr-1.5" />
                 Novo Projeto
+              </Button>
+            )}
+
+            {isConveniosPage && (
+              <Button
+                id="btn-novo-convenio-topbar"
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('open-modal-novo-convenio'))
+                }}
+                className="bg-[#1FAF7A] hover:bg-[#179C6E] text-white font-semibold text-xs sm:text-sm h-9 px-3 sm:px-4 shadow-sm shadow-[#1FAF7A]/25"
+              >
+                <Plus className="w-4 h-4 mr-1.5" />
+                Novo Convênio
               </Button>
             )}
 

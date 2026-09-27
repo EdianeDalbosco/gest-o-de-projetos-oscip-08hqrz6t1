@@ -62,6 +62,22 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
       colorClasses = 'bg-red-50 text-red-700 border-red-200'
       label = 'Rejeitada'
       break
+    case 'suspenso':
+      colorClasses = 'bg-rose-50 text-rose-700 border-rose-200'
+      label = 'Suspenso'
+      break
+    case 'em_analise':
+      colorClasses = 'bg-sky-50 text-sky-700 border-sky-200'
+      label = 'Em Análise'
+      break
+    case 'nao_iniciada':
+      colorClasses = 'bg-slate-100 text-slate-600 border-slate-200'
+      label = 'Não Iniciada'
+      break
+    case 'em_andamento':
+      colorClasses = 'bg-amber-50 text-amber-700 border-amber-200'
+      label = 'Em Andamento'
+      break
     default:
       label = status
   }
