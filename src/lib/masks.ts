@@ -88,3 +88,66 @@ export function isCompleteCnpj(value: string | null | undefined): boolean {
 export function isCompleteCpf(value: string | null | undefined): boolean {
   return onlyDigits(value).length === 11
 }
+
+/**
+ * Converte um número para string formatada de moeda pt-BR (ex: 7809000.5 -> "7.809.000,50")
+ * sem o prefixo R$.
+ */
+export function formatCurrencyBRL(value: number | string | null | undefined): string {
+  if (value === null || value === undefined || value === '') return ''
+  const num = typeof value === 'number' ? value : Number(String(value).replace(',', '.'))
+  if (isNaN(num)) return ''
+  return new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(num)
+}
+
+/**
+ * Converte uma digitação monetária (ex: "7.809.000,00" ou "7809000" ou "7809000.00" ou apenas dígitos)
+ * para número float correspondente.
+ */
+export function parseCurrencyBRL(value: string | number | null | undefined): number {
+  if (value === null || value === undefined || value === '') return 0
+  if (typeof value === 'number') return isNaN(value) ? 0 : value
+
+  const str = String(value).trim()
+  if (!str) return 0
+
+  // Se já for numérico puro (ex: "7809000" ou "7809000.50")
+  if (/^-?\d+(\.\d+)?$/.test(str)) {
+    const parsed = parseFloat(str)
+    return isNaN(parsed) ? 0 : parsed
+  }
+
+  // Remove R$, espaços e pontos de milhar, substitui vírgula por ponto
+  const clean = str
+    .replace(/[R$\s]/g, '')
+    .replace(/\./g, '')
+    .replace(',', '.')
+
+  const parsed = parseFloat(clean)
+  return isNaN(parsed) ? 0 : parsed
+}
+
+/**
+ * Aplica máscara de moeda dinâmica conforme o usuário digita centavos:
+ * Digitando "7" -> "0,07"
+ * "78" -> "0,78"
+ * "780" -> "7,80"
+ * "7809" -> "78,09"
+ * "7809000" -> "78.090,00"
+ * "780900000" -> "7.809.000,00"
+ */
+export function maskCurrency(value: string | number | null | undefined): string {
+  if (value === null || value === undefined || value === '') return ''
+  const digits = onlyDigits(String(value))
+  if (!digits) return ''
+  const cents = parseInt(digits, 10)
+  if (isNaN(cents)) return ''
+  const amount = cents / 100
+  return new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount)
+}

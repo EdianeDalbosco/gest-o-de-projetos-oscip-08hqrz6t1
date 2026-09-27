@@ -22,6 +22,8 @@ import { createConvenio, updateConvenio } from '@/services/api'
 import type { ConvenioRecord, ConvenioStatus } from '@/types'
 import { Loader2, FileUp, FileText, X } from 'lucide-react'
 import pb from '@/lib/pocketbase/client'
+import { maskCurrency, parseCurrencyBRL, formatCurrencyBRL } from '@/lib/masks'
+import { formatBRL } from '@/components/StatusBadge'
 
 interface ModalConvenioProps {
   open: boolean
@@ -35,7 +37,7 @@ export function ModalConvenio({ open, onClose, onSuccess, convenioToEdit }: Moda
   const [municipio, setMunicipio] = useState('')
   const [numeroInstrumento, setNumeroInstrumento] = useState('')
   const [orgaoContratante, setOrgaoContratante] = useState('')
-  const [valorGlobal, setValorGlobal] = useState<number | string>('')
+  const [valorGlobal, setValorGlobal] = useState<string>('')
   const [status, setStatus] = useState<ConvenioStatus>('ativo')
   const [dataInicio, setDataInicio] = useState('')
   const [dataFim, setDataFim] = useState('')
@@ -51,7 +53,11 @@ export function ModalConvenio({ open, onClose, onSuccess, convenioToEdit }: Moda
       setMunicipio(convenioToEdit.municipio || '')
       setNumeroInstrumento(convenioToEdit.numero_instrumento || '')
       setOrgaoContratante(convenioToEdit.orgao_contratante || '')
-      setValorGlobal(convenioToEdit.valor_global || '')
+      setValorGlobal(
+        convenioToEdit.valor_global !== undefined && convenioToEdit.valor_global !== null
+          ? formatCurrencyBRL(convenioToEdit.valor_global)
+          : '',
+      )
       setStatus(convenioToEdit.status || 'ativo')
       setDataInicio(convenioToEdit.data_inicio ? convenioToEdit.data_inicio.split('T')[0] : '')
       setDataFim(convenioToEdit.data_fim ? convenioToEdit.data_fim.split('T')[0] : '')
@@ -78,8 +84,10 @@ export function ModalConvenio({ open, onClose, onSuccess, convenioToEdit }: Moda
     if (!nome.trim()) errs.nome = 'Nome do instrumento é obrigatório.'
     if (!municipio.trim()) errs.municipio = 'Município é obrigatório.'
     if (!numeroInstrumento.trim()) errs.numeroInstrumento = 'Número do instrumento é obrigatório.'
-    if (!valorGlobal || Number(valorGlobal) <= 0)
-      errs.valorGlobal = 'Informe um valor global válido.'
+    const numericValor = parseCurrencyBRL(valorGlobal)
+    if (!valorGlobal || isNaN(numericValor) || numericValor <= 0) {
+      errs.valorGlobal = 'Informe um valor global válido maior que zero.'
+    }
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -87,6 +95,8 @@ export function ModalConvenio({ open, onClose, onSuccess, convenioToEdit }: Moda
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!validate()) return
+
+    const numericValor = parseCurrencyBRL(valorGlobal)
 
     setLoading(true)
     try {
@@ -96,7 +106,7 @@ export function ModalConvenio({ open, onClose, onSuccess, convenioToEdit }: Moda
         formData.append('municipio', municipio.trim())
         formData.append('numero_instrumento', numeroInstrumento.trim())
         if (orgaoContratante.trim()) formData.append('orgao_contratante', orgaoContratante.trim())
-        formData.append('valor_global', String(Number(valorGlobal)))
+        formData.append('valor_global', String(numericValor))
         formData.append('status', status)
         if (dataInicio) formData.append('data_inicio', new Date(dataInicio).toISOString())
         if (dataFim) formData.append('data_fim', new Date(dataFim).toISOString())
@@ -114,7 +124,7 @@ export function ModalConvenio({ open, onClose, onSuccess, convenioToEdit }: Moda
           municipio: municipio.trim(),
           numero_instrumento: numeroInstrumento.trim(),
           orgao_contratante: orgaoContratante.trim() || undefined,
-          valor_global: Number(valorGlobal),
+          valor_global: numericValor,
           status,
           data_inicio: dataInicio ? new Date(dataInicio).toISOString() : undefined,
           data_fim: dataFim ? new Date(dataFim).toISOString() : undefined,
@@ -218,18 +228,42 @@ export function ModalConvenio({ open, onClose, onSuccess, convenioToEdit }: Moda
 
             <div className="space-y-1.5">
               <Label htmlFor="valorGlobal" className="text-xs font-semibold text-[#1E293B]">
-                Valor Global (R$) *
+                Valor Global *
               </Label>
-              <Input
-                id="valorGlobal"
-                type="number"
-                min="0"
-                step="0.01"
-                value={valorGlobal}
-                onChange={(e) => setValorGlobal(e.target.value)}
-                placeholder="0.00"
-                className={errors.valorGlobal ? 'border-red-500' : ''}
-              />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#64748B]">
+                  R$
+                </span>
+                <Input
+                  id="valorGlobal"
+                  type="text"
+                  inputMode="numeric"
+                  value={valorGlobal}
+                  onChange={(e) => {
+                    const masked = maskCurrency(e.target.value)
+                    setValorGlobal(masked)
+                    if (errors.valorGlobal) {
+                      setErrors((prev) => {
+                        const copy = { ...prev }
+                        delete copy.valorGlobal
+                        return copy
+                      })
+                    }
+                  }}
+                  placeholder="0,00"
+                  className={`pl-9 text-xs font-semibold tabular-nums ${
+                    errors.valorGlobal ? 'border-red-500' : ''
+                  }`}
+                />
+              </div>
+              {valorGlobal && parseCurrencyBRL(valorGlobal) > 0 && (
+                <p className="text-[11px] text-[#64748B] flex items-center justify-between">
+                  <span>Valor:</span>
+                  <span className="font-semibold text-emerald-700">
+                    {formatBRL(parseCurrencyBRL(valorGlobal))}
+                  </span>
+                </p>
+              )}
               {errors.valorGlobal && <p className="text-xs text-red-500">{errors.valorGlobal}</p>}
             </div>
           </div>
