@@ -156,7 +156,7 @@ export function ModalProjeto({ open, onClose, onSuccess, projetoToEdit }: ModalP
 
             <div className="space-y-1.5">
               <Label htmlFor="valorTotal" className="text-xs font-semibold text-[#1E293B]">
-                Valor Total do Convênio (R$) *
+                Valor Total (R$) *
               </Label>
               <Input
                 id="valorTotal"
