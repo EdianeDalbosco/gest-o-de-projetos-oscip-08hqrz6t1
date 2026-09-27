@@ -160,7 +160,7 @@ export function ModalNovaAtividade({
           {planosTrabalho.length > 0 && (
             <div className="space-y-1.5">
               <Label htmlFor="planoTrabalho" className="text-xs font-semibold text-[#1E293B]">
-                Vincular a Plano de Trabalho (Convênio Municipal)
+                Vincular a Plano de Trabalho (Instrumento Municipal)
               </Label>
               <Select
                 value={planoTrabalhoId}

@@ -91,14 +91,14 @@ export default function ConveniosList() {
     e.stopPropagation()
     if (
       window.confirm(
-        'Tem certeza que deseja excluir este convênio? Todas as secretarias, planos e metas vinculados serão removidos.',
+        'Tem certeza que deseja excluir este instrumento? Todas as secretarias, planos e metas vinculados serão removidos.',
       )
     ) {
       try {
         await deleteConvenio(id)
         fetchData()
       } catch (err) {
-        alert('Não foi possível excluir o convênio. Verifique dependências ativas.')
+        alert('Não foi possível excluir o instrumento. Verifique dependências ativas.')
       }
     }
   }
@@ -125,7 +125,7 @@ export default function ConveniosList() {
       {/* Top Header & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-[#1E293B]">Convênios Municipais</h2>
+          <h2 className="text-xl font-bold text-[#1E293B]">Instrumentos Municipais</h2>
           <p className="text-xs text-[#64748B]">
             Gestão integrada de parcerias com prefeituras, articuladas por secretaria, plano de
             trabalho e metas.
@@ -139,7 +139,7 @@ export default function ConveniosList() {
           className="bg-[#1FAF7A] hover:bg-[#179C6E] text-white font-semibold text-xs sm:text-sm shadow-md shadow-[#1FAF7A]/25 shrink-0"
         >
           <Plus className="w-4 h-4 mr-1.5" />
-          Novo Convênio
+          Novo Instrumento
         </Button>
       </div>
 
@@ -147,7 +147,9 @@ export default function ConveniosList() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl border border-[#E2E8F0] p-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#64748B] uppercase">Convênios Ativos</span>
+            <span className="text-xs font-semibold text-[#64748B] uppercase">
+              Instrumentos Ativos
+            </span>
             <Landmark className="w-4 h-4 text-[#1FAF7A]" />
           </div>
           <p className="text-2xl font-bold text-[#1E293B] mt-2 tabular-nums">
@@ -209,7 +211,7 @@ export default function ConveniosList() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por convênio, município ou instrumento..."
+            placeholder="Buscar por instrumento, município ou número..."
             className="pl-9 text-xs h-9"
           />
         </div>
@@ -230,17 +232,17 @@ export default function ConveniosList() {
         </div>
       </div>
 
-      {/* Convenios Grid */}
+      {/* Instrumentos Grid */}
       {loading ? (
         <div className="py-20 text-center">
-          <p className="text-xs text-[#64748B]">Carregando convênios municipais...</p>
+          <p className="text-xs text-[#64748B]">Carregando instrumentos municipais...</p>
         </div>
       ) : filteredConvenios.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-[#CBD5E1] p-8">
           <Landmark className="w-12 h-12 text-[#94A3B8] mx-auto mb-3" />
-          <h3 className="text-sm font-bold text-[#1E293B]">Nenhum convênio encontrado</h3>
+          <h3 className="text-sm font-bold text-[#1E293B]">Nenhum instrumento encontrado</h3>
           <p className="text-xs text-[#64748B] mt-1 max-w-sm mx-auto">
-            Não foram localizados convênios com os filtros selecionados. Crie um novo convênio
+            Não foram localizados instrumentos com os filtros selecionados. Crie um novo instrumento
             municipal para começar.
           </p>
           <Button
@@ -251,7 +253,7 @@ export default function ConveniosList() {
             className="mt-4 bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs"
           >
             <Plus className="w-3.5 h-3.5 mr-1" />
-            Novo Convênio
+            Novo Instrumento
           </Button>
         </div>
       ) : (
@@ -300,14 +302,14 @@ export default function ConveniosList() {
                           setModalOpen(true)
                         }}
                         className="p-1.5 text-[#64748B] hover:text-[#1FAF7A] hover:bg-slate-100 rounded-md"
-                        title="Editar Convênio"
+                        title="Editar Instrumento"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={(e) => handleDelete(e, conv.id)}
                         className="p-1.5 text-[#64748B] hover:text-red-600 hover:bg-red-50 rounded-md"
-                        title="Excluir Convênio"
+                        title="Excluir Instrumento"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -370,7 +372,7 @@ export default function ConveniosList() {
                     </div>
                   </div>
 
-                  {/* Período & Valor Global do Convênio */}
+                  {/* Período & Valor Global do Instrumento */}
                   <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-50">
                     <div className="flex items-center gap-1 text-[#64748B]">
                       <Calendar className="w-3.5 h-3.5 text-[#94A3B8]" />
@@ -396,7 +398,7 @@ export default function ConveniosList() {
                     className="w-full text-xs font-semibold text-[#1FAF7A] border-[#1FAF7A]/25 hover:bg-[#1FAF7A]/10 mt-1"
                   >
                     <Link to={`/convenios/${conv.id}`}>
-                      Acessar Estrutura do Convênio
+                      Acessar Estrutura do Instrumento
                       <ExternalLink className="w-3.5 h-3.5 ml-1.5" />
                     </Link>
                   </Button>

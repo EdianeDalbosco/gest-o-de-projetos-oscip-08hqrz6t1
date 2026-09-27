@@ -49,7 +49,7 @@ const navSections: NavSection[] = [
     title: 'Projetos',
     items: [
       { label: 'Lista de Projetos', path: '/projetos', icon: FolderKanban },
-      { label: 'Convênios', path: '/convenios', icon: Landmark },
+      { label: 'Instrumentos', path: '/convenios', icon: Landmark },
     ],
   },
   {
@@ -82,8 +82,8 @@ export default function Layout() {
     if (path.startsWith('/projetos/novo')) return 'Novo Projeto'
     if (path.startsWith('/projetos/') && path !== '/projetos') return 'Detalhes do Projeto'
     if (path === '/projetos') return 'Projetos'
-    if (path.startsWith('/convenios/') && path !== '/convenios') return 'Detalhes do Convênio'
-    if (path === '/convenios') return 'Convênios Municipais'
+    if (path.startsWith('/convenios/') && path !== '/convenios') return 'Detalhes do Instrumento'
+    if (path === '/convenios') return 'Instrumentos Municipais'
     if (path === '/faturamento') return 'Faturamento & Faturas'
     if (path === '/financeiro') return 'Gestão Financeira Mensal'
     if (path === '/contratos/novo/elaborar') return 'Elaboração de Contrato'
@@ -348,7 +348,7 @@ export default function Layout() {
                 className="bg-[#1FAF7A] hover:bg-[#179C6E] text-white font-semibold text-xs sm:text-sm h-9 px-3 sm:px-4 shadow-sm shadow-[#1FAF7A]/25"
               >
                 <Plus className="w-4 h-4 mr-1.5" />
-                Novo Convênio
+                Novo Instrumento
               </Button>
             )}
 

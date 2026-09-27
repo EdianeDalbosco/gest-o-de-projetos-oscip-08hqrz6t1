@@ -306,7 +306,7 @@ export default function ConvenioDetail() {
   if (loading) {
     return (
       <div className="py-20 text-center">
-        <p className="text-xs text-[#64748B]">Carregando estrutura do convênio...</p>
+        <p className="text-xs text-[#64748B]">Carregando estrutura do instrumento...</p>
       </div>
     )
   }
@@ -314,11 +314,11 @@ export default function ConvenioDetail() {
   if (!convenio) {
     return (
       <div className="text-center py-20 space-y-4">
-        <h2 className="text-lg font-bold text-[#1E293B]">Convênio não localizado</h2>
+        <h2 className="text-lg font-bold text-[#1E293B]">Instrumento não localizado</h2>
         <Button asChild variant="outline">
           <Link to="/convenios">
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar para Convênios
+            Voltar para Instrumentos
           </Link>
         </Button>
       </div>
@@ -331,13 +331,13 @@ export default function ConvenioDetail() {
       <div className="flex items-center gap-2 text-xs text-[#64748B]">
         <Link to="/convenios" className="hover:text-[#1FAF7A] inline-flex items-center">
           <ArrowLeft className="w-3.5 h-3.5 mr-1" />
-          Convênios Municipais
+          Instrumentos Municipais
         </Link>
         <span>/</span>
         <span className="text-[#1E293B] font-medium truncate max-w-sm">{convenio.nome}</span>
       </div>
 
-      {/* Header Principal do Convênio */}
+      {/* Header Principal do Instrumento */}
       <div className="bg-white rounded-xl border border-[#E2E8F0] p-6 shadow-sm flex flex-col md:flex-row md:items-start justify-between gap-4">
         <div className="space-y-2">
           <div className="flex items-center gap-2.5 flex-wrap">
@@ -378,7 +378,7 @@ export default function ConvenioDetail() {
             className="text-xs font-semibold"
           >
             <Edit2 className="w-3.5 h-3.5 mr-1.5" />
-            Editar Convênio
+            Editar Instrumento
           </Button>
 
           <Button
@@ -409,7 +409,7 @@ export default function ConvenioDetail() {
                 </h3>
                 <p className="text-xs text-[#64748B]">
                   Existem metas com prazo expirado ou pendências financeiras vinculadas aos planos
-                  deste convênio.
+                  deste instrumento.
                 </p>
               </div>
             </div>
@@ -528,7 +528,7 @@ export default function ConvenioDetail() {
         <Card className="border-[#E2E8F0]">
           <CardContent className="p-5">
             <span className="text-xs font-semibold text-[#64748B] uppercase">
-              Valor Global do Convênio
+              Valor Global do Instrumento
             </span>
             <p className="text-2xl font-bold text-[#1E293B] mt-2 tabular-nums">
               {formatBRL(convenio.valor_global)}
@@ -620,7 +620,7 @@ export default function ConvenioDetail() {
             <Layers className="w-10 h-10 text-[#94A3B8] mx-auto mb-2" />
             <h4 className="text-sm font-bold text-[#1E293B]">Nenhuma secretaria cadastrada</h4>
             <p className="text-xs text-[#64748B] mt-1 max-w-sm mx-auto">
-              Adicione a primeira secretaria municipal participante deste convênio para vincular
+              Adicione a primeira secretaria municipal participante deste instrumento para vincular
               planos de trabalho.
             </p>
             <Button

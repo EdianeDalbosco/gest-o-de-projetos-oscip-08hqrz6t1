@@ -117,7 +117,7 @@ export function ModalNovaFatura({ open, onClose, onSuccess }: ModalNovaFaturaPro
             Emitir Nova Fatura / Cobrança
           </DialogTitle>
           <DialogDescription className="text-xs text-[#64748B]">
-            Gere uma fatura atrelada a termo de fomento, convênio ou contrato de prestação.
+            Gere uma fatura atrelada a termo de fomento, instrumento ou contrato de prestação.
           </DialogDescription>
         </DialogHeader>
 
@@ -201,7 +201,7 @@ export function ModalNovaFatura({ open, onClose, onSuccess }: ModalNovaFaturaPro
 
           <div className="space-y-1.5">
             <Label htmlFor="planoTrabalhoId" className="text-xs font-semibold text-[#1E293B]">
-              Plano de Trabalho do Convênio (Opcional)
+              Plano de Trabalho do Instrumento (Opcional)
             </Label>
             <Select value={planoTrabalhoId} onValueChange={setPlanoTrabalhoId}>
               <SelectTrigger id="planoTrabalhoId">

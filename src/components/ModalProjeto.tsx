@@ -140,7 +140,7 @@ export function ModalProjeto({ open, onClose, onSuccess, projetoToEdit }: ModalP
             {projetoToEdit ? 'Editar Projeto' : 'Novo Projeto'}
           </DialogTitle>
           <DialogDescription className="text-xs text-[#64748B]">
-            Preencha as informações gerais do convênio ou iniciativa institucional.
+            Preencha as informações gerais do projeto ou iniciativa institucional.
           </DialogDescription>
         </DialogHeader>
 

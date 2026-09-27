@@ -227,7 +227,7 @@ export default function ProjetoDetail() {
                   {formatBRL(projeto.valor_total)}
                 </p>
                 <span className="text-xs text-[#94A3B8] mt-1 block">
-                  Aporte aprovado em convênio
+                  Aporte aprovado em instrumento
                 </span>
               </CardContent>
             </Card>

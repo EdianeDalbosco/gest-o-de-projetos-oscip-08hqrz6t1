@@ -148,12 +148,12 @@ export function ModalRelatorioPrestacaoContas({
             </div>
           </div>
 
-          {/* Identificação do Convênio e Pasta Responsável */}
+          {/* Identificação do Instrumento e Pasta Responsável */}
           <div className="bg-slate-50 border border-slate-300 rounded p-4 mb-6 text-xs space-y-2">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <span className="font-bold text-slate-600 block text-[10px] uppercase">
-                  Convênio / Instrumento
+                  Instrumento
                 </span>
                 <span className="font-bold text-sm text-black">
                   {convenio.nome} ({convenio.numero_instrumento})
@@ -431,7 +431,7 @@ export function ModalRelatorioPrestacaoContas({
               <div className="border-b border-black w-4/5 mx-auto h-8"></div>
               <p className="font-bold text-black uppercase">Responsável pela Prestação de Contas</p>
               <p className="text-[11px] text-slate-600">
-                Coordenação de Projetos e Convênios — OSCIP
+                Coordenação de Projetos e Instrumentos — OSCIP
               </p>
             </div>
 
@@ -446,7 +446,7 @@ export function ModalRelatorioPrestacaoContas({
 
           <div className="mt-8 text-center text-[10px] text-slate-500">
             Documento emitido eletronicamente pelo Sistema Integrado de Gestão de Projetos e
-            Convênios em {new Date().toLocaleString('pt-BR')}.
+            Instrumentos em {new Date().toLocaleString('pt-BR')}.
           </div>
         </div>
 

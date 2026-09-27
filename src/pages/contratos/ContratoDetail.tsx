@@ -376,7 +376,7 @@ export default function ContratoDetail() {
                 <AccordionContent className="text-xs text-[#64748B] leading-relaxed pt-1">
                   O presente instrumento tem por objetivo a prestação de serviços e execução das
                   atividades correspondentes à função de {contrato.cargo_funcao}, vinculadas às
-                  finalidades estatutárias da organização e convênios correlatos.
+                  finalidades estatutárias da organização e instrumentos correlatos.
                 </AccordionContent>
               </AccordionItem>
 

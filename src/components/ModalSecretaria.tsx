@@ -93,7 +93,7 @@ export function ModalSecretaria({
             {secretariaToEdit ? 'Editar Secretaria' : 'Nova Secretaria'}
           </DialogTitle>
           <DialogDescription className="text-xs text-[#64748B]">
-            Vincule um órgão da administração municipal a este convênio.
+            Vincule um órgão da administração municipal a este instrumento.
           </DialogDescription>
         </DialogHeader>
 
@@ -142,7 +142,7 @@ export function ModalSecretaria({
               rows={3}
               value={observacoes}
               onChange={(e) => setObservacoes(e.target.value)}
-              placeholder="Objetivos e atribuições específicas desta pasta no convênio..."
+              placeholder="Objetivos e atribuições específicas desta pasta no instrumento..."
             />
           </div>
 

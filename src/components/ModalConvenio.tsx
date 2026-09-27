@@ -69,7 +69,7 @@ export function ModalConvenio({ open, onClose, onSuccess, convenioToEdit }: Moda
 
   const validate = () => {
     const errs: Record<string, string> = {}
-    if (!nome.trim()) errs.nome = 'Nome do convênio é obrigatório.'
+    if (!nome.trim()) errs.nome = 'Nome do instrumento é obrigatório.'
     if (!municipio.trim()) errs.municipio = 'Município é obrigatório.'
     if (!numeroInstrumento.trim()) errs.numeroInstrumento = 'Número do instrumento é obrigatório.'
     if (!valorGlobal || Number(valorGlobal) <= 0)
@@ -105,7 +105,7 @@ export function ModalConvenio({ open, onClose, onSuccess, convenioToEdit }: Moda
       onSuccess()
       onClose()
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro ao salvar convênio.'
+      const msg = err instanceof Error ? err.message : 'Erro ao salvar instrumento.'
       setErrors({ general: msg })
     } finally {
       setLoading(false)
@@ -117,10 +117,10 @@ export function ModalConvenio({ open, onClose, onSuccess, convenioToEdit }: Moda
       <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-lg font-bold text-[#1E293B]">
-            {convenioToEdit ? 'Editar Convênio' : 'Novo Convênio'}
+            {convenioToEdit ? 'Editar Instrumento' : 'Novo Instrumento'}
           </DialogTitle>
           <DialogDescription className="text-xs text-[#64748B]">
-            Preencha os dados do convênio firmado com o município e seus órgãos executores.
+            Preencha os dados do instrumento firmado com o município e seus órgãos executores.
           </DialogDescription>
         </DialogHeader>
 
@@ -133,13 +133,13 @@ export function ModalConvenio({ open, onClose, onSuccess, convenioToEdit }: Moda
 
           <div className="space-y-1.5">
             <Label htmlFor="nome" className="text-xs font-semibold text-[#1E293B]">
-              Nome / Título do Convênio *
+              Nome / Título do Instrumento *
             </Label>
             <Input
               id="nome"
               value={nome}
               onChange={(e) => setNome(e.target.value)}
-              placeholder="Ex: Convênio 001/2024 — Prefeitura Municipal de São João"
+              placeholder="Ex: Instrumento 001/2024 — Prefeitura Municipal de São João"
               className={errors.nome ? 'border-red-500' : ''}
             />
             {errors.nome && <p className="text-xs text-red-500">{errors.nome}</p>}
@@ -261,7 +261,7 @@ export function ModalConvenio({ open, onClose, onSuccess, convenioToEdit }: Moda
               rows={3}
               value={observacoes}
               onChange={(e) => setObservacoes(e.target.value)}
-              placeholder="Descreva as diretrizes gerais do convênio municipal..."
+              placeholder="Descreva as diretrizes gerais do instrumento municipal..."
             />
           </div>
 
@@ -275,7 +275,7 @@ export function ModalConvenio({ open, onClose, onSuccess, convenioToEdit }: Moda
               className="bg-[#1FAF7A] hover:bg-[#179C6E] text-white"
             >
               {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {convenioToEdit ? 'Salvar Alterações' : 'Criar Convênio'}
+              {convenioToEdit ? 'Salvar Alterações' : 'Criar Instrumento'}
             </Button>
           </DialogFooter>
         </form>

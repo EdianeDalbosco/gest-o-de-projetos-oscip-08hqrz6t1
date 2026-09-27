@@ -123,7 +123,7 @@ Emitido eletronicamente via Sistema ONG Gestão.
         <div>
           <h2 className="text-xl font-bold text-[#1E293B]">Controle de Faturamento & Cobrança</h2>
           <p className="text-xs text-[#64748B]">
-            Emissão de faturas de convênios, controle de prazos e conciliação de recebíveis.
+            Emissão de faturas de instrumentos, controle de prazos e conciliação de recebíveis.
           </p>
         </div>
         <Button
