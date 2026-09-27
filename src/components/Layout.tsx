@@ -116,7 +116,7 @@ export default function Layout() {
           </div>
           <div className="hidden lg:flex flex-col leading-tight">
             <span className="font-bold text-base text-[#1E293B] tracking-tight">
-              ONG <span className="text-[#1FAF7A]">Gestão</span>
+              OSCIP&nbsp;<span className="text-[#1FAF7A]">Gestão</span>
             </span>
             <span className="text-[11px] text-[#64748B]">Impacto & Controle</span>
           </div>
