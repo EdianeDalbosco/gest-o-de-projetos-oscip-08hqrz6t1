@@ -14,6 +14,7 @@ export interface ProjetoRecord extends RecordModel {
   valor_total: number
   status: ProjetoStatus
   progresso?: number
+  contratos_vinculados?: 'CLT' | 'PJ'
   data_inicio?: string
   data_fim?: string
   parceiro?: string

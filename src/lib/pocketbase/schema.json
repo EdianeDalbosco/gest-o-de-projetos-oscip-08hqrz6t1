@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-27T22:26:36.300Z",
+  "generatedAt": "2026-09-27T22:36:52.496Z",
   "collections": [
     {
       "name": "users",
@@ -117,6 +117,13 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "contratos_vinculados",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["CLT", "PJ"]
         }
       ],
       "indexes": [

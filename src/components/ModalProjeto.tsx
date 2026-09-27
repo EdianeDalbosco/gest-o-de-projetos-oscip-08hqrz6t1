@@ -34,7 +34,7 @@ export function ModalProjeto({ open, onClose, onSuccess, projetoToEdit }: ModalP
   const [descricao, setDescricao] = useState('')
   const [valorTotal, setValorTotal] = useState<number | string>('')
   const [status, setStatus] = useState<ProjetoStatus>('ativo')
-  const [progresso, setProgresso] = useState<number | string>(0)
+  const [contratosVinculados, setContratosVinculados] = useState<'CLT' | 'PJ'>('CLT')
   const [parceiro, setParceiro] = useState('')
   const [dataInicio, setDataInicio] = useState('')
   const [dataFim, setDataFim] = useState('')
@@ -47,7 +47,7 @@ export function ModalProjeto({ open, onClose, onSuccess, projetoToEdit }: ModalP
       setDescricao(projetoToEdit.descricao || '')
       setValorTotal(projetoToEdit.valor_total || '')
       setStatus(projetoToEdit.status || 'ativo')
-      setProgresso(projetoToEdit.progresso || 0)
+      setContratosVinculados(projetoToEdit.contratos_vinculados || 'CLT')
       setParceiro(projetoToEdit.parceiro || '')
       setDataInicio(projetoToEdit.data_inicio ? projetoToEdit.data_inicio.split('T')[0] : '')
       setDataFim(projetoToEdit.data_fim ? projetoToEdit.data_fim.split('T')[0] : '')
@@ -56,7 +56,7 @@ export function ModalProjeto({ open, onClose, onSuccess, projetoToEdit }: ModalP
       setDescricao('')
       setValorTotal('')
       setStatus('ativo')
-      setProgresso(0)
+      setContratosVinculados('CLT')
       setParceiro('')
       setDataInicio(new Date().toISOString().split('T')[0])
       setDataFim('')
@@ -68,9 +68,6 @@ export function ModalProjeto({ open, onClose, onSuccess, projetoToEdit }: ModalP
     const errs: Record<string, string> = {}
     if (!nome.trim()) errs.nome = 'Nome do projeto é obrigatório.'
     if (!valorTotal || Number(valorTotal) <= 0) errs.valorTotal = 'Informe um valor total válido.'
-    const progVal = Number(progresso)
-    if (isNaN(progVal) || progVal < 0 || progVal > 100)
-      errs.progresso = 'Progresso deve ser entre 0 e 100%.'
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -86,7 +83,7 @@ export function ModalProjeto({ open, onClose, onSuccess, projetoToEdit }: ModalP
         descricao: descricao.trim() || undefined,
         valor_total: Number(valorTotal),
         status,
-        progresso: Number(progresso) || 0,
+        contratos_vinculados: contratosVinculados,
         parceiro: parceiro.trim() || undefined,
         data_inicio: dataInicio ? new Date(dataInicio).toISOString() : undefined,
         data_fim: dataFim ? new Date(dataFim).toISOString() : undefined,
@@ -191,19 +188,21 @@ export function ModalProjeto({ open, onClose, onSuccess, projetoToEdit }: ModalP
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="progresso" className="text-xs font-semibold text-[#1E293B]">
-                Progresso Atual (%)
+              <Label htmlFor="contratosVinculados" className="text-xs font-semibold text-[#1E293B]">
+                Contratos Vinculados
               </Label>
-              <Input
-                id="progresso"
-                type="number"
-                min="0"
-                max="100"
-                value={progresso}
-                onChange={(e) => setProgresso(e.target.value)}
-                placeholder="0"
-              />
-              {errors.progresso && <p className="text-xs text-red-500">{errors.progresso}</p>}
+              <Select
+                value={contratosVinculados}
+                onValueChange={(val) => setContratosVinculados(val as 'CLT' | 'PJ')}
+              >
+                <SelectTrigger id="contratosVinculados">
+                  <SelectValue placeholder="Selecione o tipo de contrato" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CLT">CLT</SelectItem>
+                  <SelectItem value="PJ">PJ</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

@@ -15,7 +15,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
 import {
   Select,
   SelectContent,
@@ -205,15 +204,12 @@ export default function ProjetosList() {
               </div>
 
               <div className="mt-5 pt-4 border-t border-slate-100 space-y-3">
-                {/* Progress bar */}
-                <div>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-[#64748B] font-medium">Execução do Projeto</span>
-                    <span className="font-bold text-[#1E293B] tabular-nums">
-                      {proj.progresso || 0}%
-                    </span>
-                  </div>
-                  <Progress value={proj.progresso || 0} className="h-2" />
+                {/* Contratos Vinculados Badge */}
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[#64748B] font-medium">Contratos Vinculados</span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    Contrato: {proj.contratos_vinculados || 'CLT'}
+                  </span>
                 </div>
 
                 {/* Period & Total Budget */}
