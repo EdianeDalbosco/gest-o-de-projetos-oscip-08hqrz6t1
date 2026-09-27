@@ -235,7 +235,7 @@ export function ModalProjeto({ open, onClose, onSuccess, projetoToEdit }: ModalP
 
           <div className="space-y-1.5">
             <Label htmlFor="descricao" className="text-xs font-semibold text-[#1E293B]">
-              Descrição do Objeto & Metas
+              Descrição do Objeto
             </Label>
             <Textarea
               id="descricao"
