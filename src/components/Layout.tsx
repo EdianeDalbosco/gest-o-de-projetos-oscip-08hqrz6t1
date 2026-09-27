@@ -48,8 +48,8 @@ const navSections: NavSection[] = [
   {
     title: 'Projetos',
     items: [
-      { label: 'Lista de Projetos', path: '/projetos', icon: FolderKanban },
       { label: 'Instrumentos', path: '/convenios', icon: Landmark },
+      { label: 'Lista de Projetos', path: '/projetos', icon: FolderKanban },
     ],
   },
   {
