@@ -77,7 +77,7 @@ export default function Layout() {
     if (path === '/') return 'Dashboard'
     if (path.startsWith('/projetos/novo')) return 'Novo Projeto'
     if (path.startsWith('/projetos/') && path !== '/projetos') return 'Detalhes do Projeto'
-    if (path === '/projetos') return 'Projetos Sociais'
+    if (path === '/projetos') return 'Projetos'
     if (path === '/faturamento') return 'Faturamento & Faturas'
     if (path === '/financeiro') return 'Gestão Financeira Mensal'
     if (path === '/contratos/novo/elaborar') return 'Elaboração de Contrato'
