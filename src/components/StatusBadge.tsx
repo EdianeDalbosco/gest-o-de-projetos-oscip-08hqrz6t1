@@ -78,6 +78,22 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
       colorClasses = 'bg-amber-50 text-amber-700 border-amber-200'
       label = 'Em Andamento'
       break
+    case 'reservado':
+      colorClasses = 'bg-amber-50 text-amber-700 border-amber-200'
+      label = 'Reservado'
+      break
+    case 'liquidado':
+      colorClasses = 'bg-sky-50 text-sky-700 border-sky-200'
+      label = 'Liquidado'
+      break
+    case 'pago':
+      colorClasses = 'bg-emerald-50 text-emerald-700 border-emerald-200 font-semibold'
+      label = 'Pago'
+      break
+    case 'atrasada':
+      colorClasses = 'bg-red-50 text-red-700 border-red-200 font-semibold'
+      label = 'Atrasada'
+      break
     default:
       label = status
   }

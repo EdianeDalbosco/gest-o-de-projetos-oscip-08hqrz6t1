@@ -64,6 +64,7 @@ export interface FaturaRecord extends RecordModel {
   numero: string
   projeto_id?: string
   contrato_id?: string
+  plano_trabalho_id?: string
   valor: number
   data_emissao: string
   data_vencimento: string
@@ -72,6 +73,7 @@ export interface FaturaRecord extends RecordModel {
   expand?: {
     projeto_id?: ProjetoRecord
     contrato_id?: ContratoRecord
+    plano_trabalho_id?: PlanoTrabalhoRecord
   }
 }
 
@@ -135,7 +137,24 @@ export interface MetaRecord extends RecordModel {
   quantidade_alvo?: number
   quantidade_realizada?: number
   status: MetaStatus
+  prazo?: string
   expand?: {
     plano_trabalho_id?: PlanoTrabalhoRecord
+  }
+}
+
+export type EmpenhoStatus = 'reservado' | 'liquidado' | 'pago'
+
+export interface EmpenhoRecord extends RecordModel {
+  secretaria_id: string
+  convenio_id?: string
+  numero: string
+  descricao?: string
+  valor: number
+  data?: string
+  status: EmpenhoStatus
+  expand?: {
+    secretaria_id?: SecretariaRecord
+    convenio_id?: ConvenioRecord
   }
 }

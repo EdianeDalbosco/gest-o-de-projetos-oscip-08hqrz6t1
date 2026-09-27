@@ -9,6 +9,7 @@ import type {
   SecretariaRecord,
   PlanoTrabalhoRecord,
   MetaRecord,
+  EmpenhoRecord,
 } from '@/types'
 
 // PROJETOS
@@ -280,4 +281,42 @@ export async function updateMeta(id: string, data: Partial<MetaRecord>): Promise
 
 export async function deleteMeta(id: string): Promise<boolean> {
   return pb.collection('metas').delete(id)
+}
+
+// EMPENHOS
+export async function getEmpenhos(): Promise<EmpenhoRecord[]> {
+  return pb.collection('empenhos').getFullList<EmpenhoRecord>({
+    sort: '-data,-created',
+    expand: 'secretaria_id,convenio_id',
+  })
+}
+
+export async function getEmpenhosByConvenio(convenioId: string): Promise<EmpenhoRecord[]> {
+  return pb.collection('empenhos').getFullList<EmpenhoRecord>({
+    filter: `convenio_id = "${convenioId}"`,
+    sort: '-data,-created',
+    expand: 'secretaria_id',
+  })
+}
+
+export async function getEmpenhosBySecretaria(secretariaId: string): Promise<EmpenhoRecord[]> {
+  return pb.collection('empenhos').getFullList<EmpenhoRecord>({
+    filter: `secretaria_id = "${secretariaId}"`,
+    sort: '-data,-created',
+  })
+}
+
+export async function createEmpenho(data: Partial<EmpenhoRecord>): Promise<EmpenhoRecord> {
+  return pb.collection('empenhos').create<EmpenhoRecord>(data)
+}
+
+export async function updateEmpenho(
+  id: string,
+  data: Partial<EmpenhoRecord>,
+): Promise<EmpenhoRecord> {
+  return pb.collection('empenhos').update<EmpenhoRecord>(id, data)
+}
+
+export async function deleteEmpenho(id: string): Promise<boolean> {
+  return pb.collection('empenhos').delete(id)
 }

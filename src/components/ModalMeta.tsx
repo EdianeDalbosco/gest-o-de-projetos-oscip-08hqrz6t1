@@ -41,6 +41,7 @@ export function ModalMeta({
   const [descricao, setDescricao] = useState('')
   const [quantidadeAlvo, setQuantidadeAlvo] = useState<number | string>('')
   const [quantidadeRealizada, setQuantidadeRealizada] = useState<number | string>('')
+  const [prazo, setPrazo] = useState('')
   const [status, setStatus] = useState<MetaStatus>('nao_iniciada')
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
@@ -50,11 +51,13 @@ export function ModalMeta({
       setDescricao(metaToEdit.descricao || '')
       setQuantidadeAlvo(metaToEdit.quantidade_alvo ?? '')
       setQuantidadeRealizada(metaToEdit.quantidade_realizada ?? '')
+      setPrazo(metaToEdit.prazo ? metaToEdit.prazo.split('T')[0] : '')
       setStatus(metaToEdit.status || 'nao_iniciada')
     } else {
       setDescricao('')
       setQuantidadeAlvo('')
       setQuantidadeRealizada(0)
+      setPrazo('')
       setStatus('nao_iniciada')
     }
     setErrors({})
@@ -84,6 +87,7 @@ export function ModalMeta({
         descricao: descricao.trim(),
         quantidade_alvo: quantidadeAlvo !== '' ? Number(quantidadeAlvo) : undefined,
         quantidade_realizada: quantidadeRealizada !== '' ? Number(quantidadeRealizada) : 0,
+        prazo: prazo ? new Date(prazo).toISOString() : undefined,
         status,
       }
 
@@ -193,6 +197,22 @@ export function ModalMeta({
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="meta-prazo" className="text-xs font-semibold text-[#1E293B]">
+              Prazo Estimado de Conclusão (Opcional)
+            </Label>
+            <Input
+              id="meta-prazo"
+              type="date"
+              value={prazo}
+              onChange={(e) => setPrazo(e.target.value)}
+            />
+            <p className="text-[11px] text-[#94A3B8]">
+              Utilizado para identificar metas em atraso quando a entrega não foi concluída até a
+              data.
+            </p>
           </div>
 
           <DialogFooter className="pt-3 gap-2">

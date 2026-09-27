@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-27T21:40:30.512Z",
+  "generatedAt": "2026-09-27T21:54:02.427Z",
   "collections": [
     {
       "name": "users",
@@ -387,6 +387,13 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "plano_trabalho_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "planos_trabalho"
         }
       ],
       "indexes": [
@@ -394,7 +401,8 @@
         "CREATE INDEX idx_faturas_status ON faturas (status)",
         "CREATE INDEX idx_faturas_vencimento ON faturas (data_vencimento)",
         "CREATE INDEX idx_faturas_projeto ON faturas (projeto_id)",
-        "CREATE INDEX idx_faturas_contrato ON faturas (contrato_id)"
+        "CREATE INDEX idx_faturas_contrato ON faturas (contrato_id)",
+        "CREATE INDEX `idx_faturas_plano` ON `faturas` (plano_trabalho_id)"
       ]
     },
     {
@@ -738,11 +746,95 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "prazo",
+          "type": "date",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [
         "CREATE INDEX idx_metas_plano ON metas (plano_trabalho_id)",
         "CREATE INDEX idx_metas_status ON metas (status)"
+      ]
+    },
+    {
+      "name": "empenhos",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "secretaria_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "secretarias"
+        },
+        {
+          "name": "convenio_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "convenios"
+        },
+        {
+          "name": "numero",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "descricao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "valor",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "data",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["reservado", "liquidado", "pago"]
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_empenhos_secretaria ON empenhos (secretaria_id)",
+        "CREATE INDEX idx_empenhos_convenio ON empenhos (convenio_id)",
+        "CREATE INDEX idx_empenhos_status ON empenhos (status)",
+        "CREATE INDEX idx_empenhos_data ON empenhos (data)"
       ]
     }
   ]

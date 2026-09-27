@@ -17,8 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { createFatura, getProjetos, getContratos } from '@/services/api'
-import type { ProjetoRecord, ContratoRecord, FaturaStatus } from '@/types'
+import { createFatura, getProjetos, getContratos, getPlanosTrabalho } from '@/services/api'
+import type { ProjetoRecord, ContratoRecord, PlanoTrabalhoRecord, FaturaStatus } from '@/types'
 import { Loader2 } from 'lucide-react'
 
 interface ModalNovaFaturaProps {
@@ -31,6 +31,7 @@ export function ModalNovaFatura({ open, onClose, onSuccess }: ModalNovaFaturaPro
   const [numero, setNumero] = useState('')
   const [projetoId, setProjetoId] = useState('')
   const [contratoId, setContratoId] = useState('')
+  const [planoTrabalhoId, setPlanoTrabalhoId] = useState('')
   const [valor, setValor] = useState<number | string>('')
   const [dataEmissao, setDataEmissao] = useState(new Date().toISOString().split('T')[0])
   const [dataVencimento, setDataVencimento] = useState('')
@@ -39,21 +40,26 @@ export function ModalNovaFatura({ open, onClose, onSuccess }: ModalNovaFaturaPro
 
   const [projetos, setProjetos] = useState<ProjetoRecord[]>([])
   const [contratos, setContratos] = useState<ContratoRecord[]>([])
+  const [planos, setPlanos] = useState<PlanoTrabalhoRecord[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (open) {
-      Promise.all([getProjetos(), getContratos()])
-        .then(([projList, contList]) => {
+      Promise.all([getProjetos(), getContratos(), getPlanosTrabalho()])
+        .then(([projList, contList, planList]) => {
           setProjetos(projList)
           setContratos(contList)
+          setPlanos(planList)
         })
         .catch(console.error)
 
       // Generate next suggested invoice number
       const randomId = Math.floor(100 + Math.random() * 900)
       setNumero(`FAT-2024-${randomId}`)
+      setProjetoId('')
+      setContratoId('')
+      setPlanoTrabalhoId('')
       setValor('')
       setDataEmissao(new Date().toISOString().split('T')[0])
       // Default due date: +15 days
@@ -82,8 +88,10 @@ export function ModalNovaFatura({ open, onClose, onSuccess }: ModalNovaFaturaPro
     try {
       await createFatura({
         numero: numero.trim(),
-        projeto_id: projetoId || undefined,
-        contrato_id: contratoId || undefined,
+        projeto_id: projetoId && projetoId !== 'none' ? projetoId : undefined,
+        contrato_id: contratoId && contratoId !== 'none' ? contratoId : undefined,
+        plano_trabalho_id:
+          planoTrabalhoId && planoTrabalhoId !== 'none' ? planoTrabalhoId : undefined,
         valor: Number(valor),
         data_emissao: new Date(dataEmissao).toISOString(),
         data_vencimento: new Date(dataVencimento).toISOString(),
@@ -185,6 +193,25 @@ export function ModalNovaFatura({ open, onClose, onSuccess }: ModalNovaFaturaPro
                 {contratos.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.nome} ({c.tipo} — {c.cargo_funcao})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="planoTrabalhoId" className="text-xs font-semibold text-[#1E293B]">
+              Plano de Trabalho do Convênio (Opcional)
+            </Label>
+            <Select value={planoTrabalhoId} onValueChange={setPlanoTrabalhoId}>
+              <SelectTrigger id="planoTrabalhoId">
+                <SelectValue placeholder="Selecione o plano de trabalho correspondente" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Nenhum plano vinculado</SelectItem>
+                {planos.map((pl) => (
+                  <SelectItem key={pl.id} value={pl.id}>
+                    {pl.titulo}
                   </SelectItem>
                 ))}
               </SelectContent>
