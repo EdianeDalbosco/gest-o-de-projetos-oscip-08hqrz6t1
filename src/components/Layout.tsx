@@ -18,6 +18,9 @@ import {
   ChevronDown,
   Building2,
   Check,
+  Shield,
+  Settings,
+  UserCog,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -31,22 +34,28 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 
-interface NavSection {
-  title: string
-  items: {
-    label: string
-    path: string
-    icon: React.ElementType
-  }[]
+interface NavItem {
+  label: string
+  path: string
+  icon: React.ElementType
+  minRole?: 'admin' | 'gestor' | 'operador' | 'leitura'
 }
 
-const navSections: NavSection[] = [
+interface NavSection {
+  title: string
+  minRole?: 'admin' | 'gestor' | 'operador' | 'leitura'
+  items: NavItem[]
+}
+
+const rawNavSections: NavSection[] = [
   {
     title: 'Visão Geral',
+    minRole: 'leitura',
     items: [{ label: 'Dashboard', path: '/', icon: LayoutDashboard }],
   },
   {
     title: 'Projetos',
+    minRole: 'leitura',
     items: [
       { label: 'Instrumentos', path: '/convenios', icon: Landmark },
       { label: 'Lista de Projetos', path: '/projetos', icon: FolderKanban },
@@ -54,18 +63,43 @@ const navSections: NavSection[] = [
   },
   {
     title: 'Contratos & Equipe',
+    minRole: 'operador',
     items: [
       { label: 'Prestadores & Colaboradores', path: '/prestadores', icon: Users2 },
       { label: 'Contratos CLT/PJ', path: '/contratos', icon: FileSignature },
       { label: 'Atividades Prestadores', path: '/atividades', icon: CalendarCheck2 },
-      { label: 'Elaborar Contrato', path: '/contratos/novo/elaborar', icon: FileSignature },
+      {
+        label: 'Elaborar Contrato',
+        path: '/contratos/novo/elaborar',
+        icon: FileSignature,
+        minRole: 'gestor',
+      },
     ],
   },
   {
     title: 'Financeiro',
+    minRole: 'operador',
     items: [
       { label: 'Faturamento', path: '/faturamento', icon: Receipt },
-      { label: 'Gestão Financeira', path: '/financeiro', icon: PieChart },
+      { label: 'Gestão Financeira', path: '/financeiro', icon: PieChart, minRole: 'gestor' },
+    ],
+  },
+  {
+    title: 'Configurações',
+    minRole: 'gestor',
+    items: [
+      {
+        label: 'Dados da Organização',
+        path: '/configuracao-organizacao',
+        icon: Building2,
+        minRole: 'gestor',
+      },
+      {
+        label: 'Usuários & Acessos',
+        path: '/usuarios',
+        icon: UserCog,
+        minRole: 'admin',
+      },
     ],
   },
 ]
@@ -75,6 +109,32 @@ export default function Layout() {
   const location = useLocation()
   const navigate = useNavigate()
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  const userRole = user?.role || 'admin'
+
+  // Hierarquia de perfil para verificação de permissão: admin > gestor > operador > leitura
+  const roleWeights: Record<string, number> = {
+    admin: 4,
+    gestor: 3,
+    operador: 2,
+    leitura: 1,
+  }
+
+  const hasAccess = (requiredRole?: string) => {
+    if (!requiredRole) return true
+    const currentWeight = roleWeights[userRole] || 1
+    const requiredWeight = roleWeights[requiredRole] || 1
+    return currentWeight >= requiredWeight
+  }
+
+  // Seções filtradas pelo perfil do usuário
+  const navSections = rawNavSections
+    .filter((sec) => hasAccess(sec.minRole))
+    .map((sec) => ({
+      ...sec,
+      items: sec.items.filter((item) => hasAccess(item.minRole)),
+    }))
+    .filter((sec) => sec.items.length > 0)
 
   // Current page title lookup
   const getPageTitle = () => {
@@ -92,7 +152,9 @@ export default function Layout() {
     if (path.startsWith('/contratos/') && path !== '/contratos') return 'Detalhes do Contrato'
     if (path === '/contratos') return 'Gestão de Contratos'
     if (path === '/atividades') return 'Atividades dos Prestadores'
-    return 'ONG Gestão'
+    if (path === '/configuracao-organizacao') return 'Dados da Organização'
+    if (path === '/usuarios') return 'Gestão de Usuários'
+    return 'OSCIP Gestão'
   }
 
   const isProjetosPage = location.pathname === '/projetos'
@@ -185,7 +247,22 @@ export default function Layout() {
                     <span className="text-sm font-semibold text-[#1E293B] truncate">
                       {user?.name || 'Administrador'}
                     </span>
-                    <span className="text-xs text-[#64748B] truncate">{user?.email}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] font-semibold text-[#1FAF7A] truncate">
+                        {user?.role === 'admin'
+                          ? 'Administrador'
+                          : user?.role === 'gestor'
+                            ? 'Gestor'
+                            : user?.role === 'operador'
+                              ? 'Operador'
+                              : user?.role === 'leitura'
+                                ? 'Somente Leitura'
+                                : 'Administrador'}
+                      </span>
+                      {user?.equipe && (
+                        <span className="text-[10px] text-[#94A3B8] truncate">• {user.equipe}</span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <ChevronDown className="hidden lg:block w-4 h-4 text-[#94A3B8] shrink-0" />
@@ -198,7 +275,38 @@ export default function Layout() {
                     {user?.name || 'Administrador'}
                   </p>
                   <p className="text-xs text-[#64748B] truncate">{user?.email}</p>
+                  <div className="flex items-center gap-1 mt-1">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200">
+                      {user?.role === 'admin'
+                        ? 'Administrador'
+                        : user?.role === 'gestor'
+                          ? 'Gestor'
+                          : user?.role === 'operador'
+                            ? 'Operador'
+                            : 'Somente Leitura'}
+                    </span>
+                    {user?.equipe && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-medium">
+                        {user.equipe}
+                      </span>
+                    )}
+                  </div>
                 </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild className="cursor-pointer text-xs">
+                  <Link to="/configuracao-organizacao">
+                    <Building2 className="w-3.5 h-3.5 mr-2 text-slate-600" />
+                    <span>Dados da Organização</span>
+                  </Link>
+                </DropdownMenuItem>
+                {user?.role === 'admin' && (
+                  <DropdownMenuItem asChild className="cursor-pointer text-xs">
+                    <Link to="/usuarios">
+                      <UserCog className="w-3.5 h-3.5 mr-2 text-slate-600" />
+                      <span>Gestão de Usuários</span>
+                    </Link>
+                  </DropdownMenuItem>
+                )}{' '}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -289,7 +397,15 @@ export default function Layout() {
                     <span className="text-xs font-semibold text-[#1E293B] truncate">
                       {user?.name || 'Administrador'}
                     </span>
-                    <span className="text-[11px] text-[#64748B] truncate">{user?.email}</span>
+                    <span className="text-[11px] text-[#1FAF7A] font-medium truncate">
+                      {user?.role === 'admin'
+                        ? 'Administrador'
+                        : user?.role === 'gestor'
+                          ? 'Gestor'
+                          : user?.role === 'operador'
+                            ? 'Operador'
+                            : 'Somente Leitura'}
+                    </span>
                   </div>
                 </div>
                 <button

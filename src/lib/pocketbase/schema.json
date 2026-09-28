@@ -1,15 +1,15 @@
 {
-  "generatedAt": "2026-09-28T04:28:53.571Z",
+  "generatedAt": "2026-09-28T04:47:48.342Z",
   "collections": [
     {
       "name": "users",
       "type": "auth",
       "apiRules": {
-        "list": "id = @request.auth.id",
-        "view": "id = @request.auth.id",
-        "create": "",
-        "update": "id = @request.auth.id",
-        "delete": "id = @request.auth.id"
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
       },
       "fields": [
         {
@@ -37,6 +37,39 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "role",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["admin", "gestor", "operador", "leitura"]
+        },
+        {
+          "name": "equipe",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "Administração",
+            "Saúde",
+            "Educação",
+            "Financeiro",
+            "Projetos",
+            "Jurídico"
+          ]
+        },
+        {
+          "name": "cargo",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "ativo",
+          "type": "bool",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [
@@ -1267,6 +1300,112 @@
         "CREATE INDEX idx_fat_mensal_sec ON faturamentos_mensais (secretaria_id)",
         "CREATE INDEX idx_fat_mensal_periodo ON faturamentos_mensais (ano, mes)"
       ]
+    },
+    {
+      "name": "organizacao_config",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "nome_organizacao",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "natureza_juridica",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "cnpj",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "endereco_completo",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "cidade",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "estado",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "foro",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "presidente_nome",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "presidente_cpf",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "presidente_cargo",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "telefone",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "email",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "termo_parceria_padrao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": ["CREATE INDEX idx_org_config_cnpj ON organizacao_config (cnpj)"]
     }
   ]
 }

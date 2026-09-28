@@ -1,9 +1,39 @@
 import type { RecordModel } from 'pocketbase'
 
+export type UserRole = 'admin' | 'gestor' | 'operador' | 'leitura'
+export type UserEquipe =
+  | 'Administração'
+  | 'Saúde'
+  | 'Educação'
+  | 'Financeiro'
+  | 'Projetos'
+  | 'Jurídico'
+  | (string & {})
+
 export interface UserRecord extends RecordModel {
   email: string
   name?: string
   avatar?: string
+  role?: UserRole
+  equipe?: UserEquipe
+  cargo?: string
+  ativo?: boolean
+}
+
+export interface OrganizacaoConfigRecord extends RecordModel {
+  nome_organizacao: string
+  natureza_juridica?: string
+  cnpj: string
+  endereco_completo: string
+  cidade?: string
+  estado?: string
+  foro?: string
+  presidente_nome: string
+  presidente_cpf: string
+  presidente_cargo: string
+  telefone?: string
+  email?: string
+  termo_parceria_padrao?: string
 }
 
 export type ProjetoStatus = 'ativo' | 'pausado' | 'concluido' | 'cancelado'

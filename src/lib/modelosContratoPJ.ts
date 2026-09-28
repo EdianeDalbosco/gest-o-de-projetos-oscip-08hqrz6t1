@@ -17,6 +17,19 @@ export type EnquadramentoTributario = 'geral' | 'simples_mei'
 
 export type VinculoInstrumentoOuOrganizacao = 'instrumento' | 'organizacao'
 
+export interface DadosContratanteCustom {
+  razaoSocial?: string
+  qualificacao?: string
+  cnpj?: string
+  endereco?: string
+  representante?: string
+  cpfRepresentante?: string
+  cargoRepresentante?: string
+  termoParceria?: string
+  foro?: string
+  cidadeAssinatura?: string
+}
+
 export interface DadosContratoPJ {
   modelo: ModeloContratoPJ
 
@@ -59,9 +72,12 @@ export interface DadosContratoPJ {
 
   // Assinatura
   dataAssinatura: string // Ex: 2026-07-15
+
+  // Dados da Organização/Presidente injetados dinamicamente
+  dadosContratanteCustom?: DadosContratanteCustom
 }
 
-// DADOS FIXOS DA CONTRATANTE (OSCIP)
+// DADOS FIXOS DA CONTRATANTE (OSCIP) - DEFAULTS
 export const DADOS_CONTRATANTE = {
   razaoSocial: 'ORGANIZAÇÃO DE SAÚDE SÃO BENTO',
   qualificacao:
@@ -71,6 +87,7 @@ export const DADOS_CONTRATANTE = {
     'Rua Trinta e Seis, 119, Lote 10 Quadra 05, Bairro Boa Esperança, Cuiabá/MT, CEP 78.068-417',
   representante: 'Iredir Maria Laccal da Silva Ferreira',
   cpfRepresentante: '983.223.111-68',
+  cargoRepresentante: 'Presidente',
   termoParceria:
     'Termo de Parceria nº 001/2026, firmado entre a CONTRATANTE e a Prefeitura Municipal de Dom Aquino/MT, assinado em 15 de julho de 2026',
   foro: 'Comarca de Cuiabá/MT',
@@ -158,14 +175,33 @@ export function gerarTextoContratoPJ(dados: DadosContratoPJ): string {
     dataInicio,
     dataFim,
     dataAssinatura,
+    dadosContratanteCustom,
   } = dados
 
+  const contratanteEfetivo = {
+    razaoSocial: dadosContratanteCustom?.razaoSocial || DADOS_CONTRATANTE.razaoSocial,
+    qualificacao: dadosContratanteCustom?.qualificacao || DADOS_CONTRATANTE.qualificacao,
+    cnpj: dadosContratanteCustom?.cnpj || DADOS_CONTRATANTE.cnpj,
+    endereco: dadosContratanteCustom?.endereco || DADOS_CONTRATANTE.endereco,
+    representante: dadosContratanteCustom?.representante || DADOS_CONTRATANTE.representante,
+    cpfRepresentante:
+      dadosContratanteCustom?.cpfRepresentante || DADOS_CONTRATANTE.cpfRepresentante,
+    cargoRepresentante:
+      dadosContratanteCustom?.cargoRepresentante ||
+      DADOS_CONTRATANTE.cargoRepresentante ||
+      'Presidente',
+    termoParceria: dadosContratanteCustom?.termoParceria || DADOS_CONTRATANTE.termoParceria,
+    foro: dadosContratanteCustom?.foro || DADOS_CONTRATANTE.foro,
+    cidadeAssinatura:
+      dadosContratanteCustom?.cidadeAssinatura || DADOS_CONTRATANTE.cidadeAssinatura,
+  }
+
   const isInstrumento = tipoVinculoInstrumento === 'instrumento'
-  const instrumentoTexto = nomeInstrumento?.trim() || DADOS_CONTRATANTE.termoParceria
+  const instrumentoTexto = nomeInstrumento?.trim() || contratanteEfetivo.termoParceria
   const organizacaoNomeContratante =
     !isInstrumento && nomeOrganizacao?.trim()
       ? nomeOrganizacao.trim()
-      : DADOS_CONTRATANTE.razaoSocial
+      : contratanteEfetivo.razaoSocial
 
   const valorFormatado = formatBRL(Number(valorNumerico) || 0)
   const valorExtenso = valorPorExtenso(Number(valorNumerico) || 0)
@@ -188,7 +224,7 @@ export function gerarTextoContratoPJ(dados: DadosContratoPJ): string {
   // Bloco de Preâmbulo padrão para os 3 modelos
   const preambulo = `CONTRATO DE PRESTAÇÃO DE SERVIÇO
 
-CONTRATANTE: ${organizacaoNomeContratante}, ${DADOS_CONTRATANTE.qualificacao}, inscrita no CNPJ ${DADOS_CONTRATANTE.cnpj}, com sede na ${DADOS_CONTRATANTE.endereco}, neste ato representada por ${DADOS_CONTRATANTE.representante}, inscrita no CPF nº ${DADOS_CONTRATANTE.cpfRepresentante}, e
+CONTRATANTE: ${organizacaoNomeContratante}, ${contratanteEfetivo.qualificacao}, inscrita no CNPJ ${contratanteEfetivo.cnpj}, com sede na ${contratanteEfetivo.endereco}, neste ato representada por ${contratanteEfetivo.representante}, inscrita no CPF nº ${contratanteEfetivo.cpfRepresentante}, e
 
 CONTRATADA: ${cRazaoSocial}, pessoa jurídica de direito privado, de natureza jurídica ${cNatJuridica}, inscrita no CNPJ nº ${cCnpj}, com endereço empresarial em ${cEndereco}, neste ato representada por ${cRep}, inscrito(a) no CPF nº ${cCpfRep}.
 
@@ -496,18 +532,20 @@ Cláusula Décima Quinta – As partes declaram não haver entre si vínculo emp
 
 DO FORO
 
-Cláusula Décima Sexta – Os contratantes elegem o foro da ${DADOS_CONTRATANTE.foro}, com renúncia de qualquer outro, por mais privilegiado que seja, para dirimir as dúvidas de interpretação e aplicação deste contrato, bem como para sua execução.
+Cláusula Décima Sexta – Os contratantes elegem o foro da ${contratanteEfetivo.foro}, com renúncia de qualquer outro, por mais privilegiado que seja, para dirimir as dúvidas de interpretação e aplicação deste contrato, bem como para sua execução.
 
 Por estarem justos e acertados, firmam o presente contrato em duas vias, de igual teor e forma, obrigando-se a cumprir o que nele está avençado, na presença de duas testemunhas, que abaixo também subscrevem, para os fins pretendidos.
 
-${DADOS_CONTRATANTE.cidadeAssinatura}, ${cDataAssinatura}.
+${contratanteEfetivo.cidadeAssinatura}, ${cDataAssinatura}.
 
 _____________________________________
 ${organizacaoNomeContratante}
-CNPJ: ${DADOS_CONTRATANTE.cnpj}
+${contratanteEfetivo.representante} (${contratanteEfetivo.cargoRepresentante})
+CNPJ: ${contratanteEfetivo.cnpj}
 
 _____________________________________
 ${cRazaoSocial}
+${cRep}
 CNPJ: ${cCnpj}`
 
   return `${preambulo}
@@ -563,21 +601,33 @@ export function gerarHtmlContratoPJ(dados: DadosContratoPJ): string {
       }
 
       // Bloco de assinaturas final
-      if (pTrim.includes('ORGANIZAÇÃO DE SAÚDE SÃO BENTO') && pTrim.includes('______')) {
-        const linhasAssinatura = pTrim.split('\n')
+      const orgRazao = dados.dadosContratanteCustom?.razaoSocial || DADOS_CONTRATANTE.razaoSocial
+      const orgCnpj = dados.dadosContratanteCustom?.cnpj || DADOS_CONTRATANTE.cnpj
+      const orgRep = dados.dadosContratanteCustom?.representante || DADOS_CONTRATANTE.representante
+      const orgCargo =
+        dados.dadosContratanteCustom?.cargoRepresentante ||
+        DADOS_CONTRATANTE.cargoRepresentante ||
+        'Presidente'
+
+      if (
+        pTrim.includes('______') &&
+        (pTrim.includes(orgRazao) || pTrim.includes('CONTRATANTE') || pTrim.includes('ORGANIZAÇÃO'))
+      ) {
         return `<div style="margin-top: 36pt; page-break-inside: avoid; font-family: 'Times New Roman', Times, serif;">
           <table style="width: 100%; border: none; text-align: center; font-size: 11pt;">
             <tr>
               <td style="width: 48%; vertical-align: top; padding: 12pt;">
                 <div style="border-top: 1px solid #000; padding-top: 6pt; margin: 0 auto; width: 85%;">
-                  <strong>${DADOS_CONTRATANTE.razaoSocial}</strong><br/>
-                  <span>CNPJ: ${DADOS_CONTRATANTE.cnpj}</span>
+                  <strong>${orgRazao}</strong><br/>
+                  <span>${orgRep} - ${orgCargo}</span><br/>
+                  <span>CNPJ: ${orgCnpj}</span>
                 </div>
               </td>
               <td style="width: 4%;"></td>
               <td style="width: 48%; vertical-align: top; padding: 12pt;">
                 <div style="border-top: 1px solid #000; padding-top: 6pt; margin: 0 auto; width: 85%;">
                   <strong>${ph(dados.razaoSocial, 'RAZÃO SOCIAL DA CONTRATADA')}</strong><br/>
+                  <span>${ph(dados.representanteLegal, 'REPRESENTANTE LEGAL')}</span><br/>
                   <span>CNPJ: ${ph(dados.cnpj, 'CNPJ')}</span>
                 </div>
               </td>

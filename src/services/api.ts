@@ -13,6 +13,8 @@ import type {
   PrestadorColaboradorRecord,
   CatalogoAtividadeRecord,
   FaturamentoMensalRecord,
+  OrganizacaoConfigRecord,
+  UserRecord,
 } from '@/types'
 
 // PROJETOS
@@ -427,4 +429,71 @@ export async function updateFaturamentoMensal(
 
 export async function deleteFaturamentoMensal(id: string): Promise<boolean> {
   return pb.collection('faturamentos_mensais').delete(id)
+}
+
+// CONFIGURAÇÃO DA ORGANIZAÇÃO (SINGLETON)
+export async function getOrganizacaoConfig(): Promise<OrganizacaoConfigRecord | null> {
+  try {
+    const list = await pb.collection('organizacao_config').getList<OrganizacaoConfigRecord>(1, 1, {
+      sort: '-created',
+    })
+    return list.items[0] || null
+  } catch (err) {
+    console.error('Erro ao buscar organizacao_config:', err)
+    return null
+  }
+}
+
+export async function saveOrganizacaoConfig(
+  data: Partial<OrganizacaoConfigRecord>,
+  existingId?: string,
+): Promise<OrganizacaoConfigRecord> {
+  if (existingId) {
+    return pb.collection('organizacao_config').update<OrganizacaoConfigRecord>(existingId, data)
+  }
+
+  // Tentar buscar se já existe algum antes de criar
+  const current = await getOrganizacaoConfig()
+  if (current) {
+    return pb.collection('organizacao_config').update<OrganizacaoConfigRecord>(current.id, data)
+  }
+  return pb.collection('organizacao_config').create<OrganizacaoConfigRecord>(data)
+}
+
+// GESTÃO DE USUÁRIOS
+export async function getUsers(): Promise<UserRecord[]> {
+  return pb.collection('users').getFullList<UserRecord>({
+    sort: '-created',
+  })
+}
+
+export async function getUserById(id: string): Promise<UserRecord> {
+  return pb.collection('users').getOne<UserRecord>(id)
+}
+
+export interface CreateUserData {
+  email: string
+  password?: string
+  passwordConfirm?: string
+  name: string
+  role?: string
+  equipe?: string
+  cargo?: string
+  ativo?: boolean
+}
+
+export async function createUser(data: CreateUserData): Promise<UserRecord> {
+  return pb.collection('users').create<UserRecord>({
+    ...data,
+    emailVisibility: false,
+    verified: true,
+  })
+}
+
+export async function updateUser(id: string, data: Partial<UserRecord>): Promise<UserRecord> {
+  return pb.collection('users').update<UserRecord>(id, data)
+}
+
+export async function deleteUser(id: string): Promise<boolean> {
+  return pb.collection('users').delete(id)
 }

@@ -26,6 +26,8 @@ import ContratoDetail from './pages/contratos/ContratoDetail'
 import ElaborarContrato from './pages/contratos/ElaborarContrato'
 import AtividadesList from './pages/contratos/AtividadesList'
 import PrestadoresList from './pages/contratos/PrestadoresList'
+import ConfiguracaoOrganizacao from './pages/configuracao/ConfiguracaoOrganizacao'
+import UsuariosList from './pages/usuarios/UsuariosList'
 
 const App = () => (
   <BrowserRouter>
@@ -61,6 +63,22 @@ const App = () => (
             <Route path="/contratos/:id" element={<ContratoDetail />} />
             <Route path="/contratos/novo/elaborar" element={<ElaborarContrato />} />
             <Route path="/atividades" element={<AtividadesList />} />
+            <Route
+              path="/configuracao-organizacao"
+              element={
+                <ProtectedRoute minRole="gestor">
+                  <ConfiguracaoOrganizacao />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/usuarios"
+              element={
+                <ProtectedRoute minRole="admin">
+                  <UsuariosList />
+                </ProtectedRoute>
+              }
+            />
           </Route>
 
           <Route path="*" element={<NotFound />} />

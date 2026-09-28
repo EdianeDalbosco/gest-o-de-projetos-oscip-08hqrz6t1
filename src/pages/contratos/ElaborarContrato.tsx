@@ -44,6 +44,7 @@ import {
   getPrestadoresColaboradores,
   getCatalogoAtividades,
   createPrestadorColaborador,
+  getOrganizacaoConfig,
 } from '@/services/api'
 import { formatBRL, formatDateBR } from '@/components/StatusBadge'
 import { valorPorExtenso } from '@/lib/extenso'
@@ -69,6 +70,7 @@ import type {
   SecretariaRecord,
   PrestadorColaboradorRecord,
   CatalogoAtividadeRecord,
+  OrganizacaoConfigRecord,
 } from '@/types'
 import * as XLSX from 'xlsx'
 
@@ -86,6 +88,9 @@ export default function ElaborarContrato() {
   // Step 1: Regime e Modelo PJ
   const [tipo, setTipo] = useState<ContratoTipo>('PJ')
   const [modeloPJ, setModeloPJ] = useState<ModeloContratoPJ>('mensal_plantao')
+
+  // Configuração dinâmica da organização
+  const [orgConfig, setOrgConfig] = useState<OrganizacaoConfigRecord | null>(null)
 
   // Listas de apoio
   const [projetos, setProjetos] = useState<ProjetoRecord[]>([])
@@ -176,6 +181,17 @@ export default function ElaborarContrato() {
   const [erroSalvar, setErroSalvar] = useState<string | null>(null)
 
   const carregarDadosIniciais = () => {
+    getOrganizacaoConfig()
+      .then((cfg) => {
+        if (cfg) {
+          setOrgConfig(cfg)
+          if (cfg.nome_organizacao) {
+            setNomeOrganizacao(cfg.nome_organizacao)
+          }
+        }
+      })
+      .catch(console.error)
+
     getConvenios()
       .then((convs) => {
         setConvenios(convs)
@@ -299,6 +315,7 @@ export default function ElaborarContrato() {
       tipoVinculoPJ === 'instrumento'
         ? instrumentoSelecionado?.nome ||
           instrumentoSelecionado?.numero_instrumento ||
+          orgConfig?.termo_parceria_padrao ||
           'Termo de Parceria nº 001/2026'
         : undefined,
     nomeOrganizacao: tipoVinculoPJ === 'organizacao' ? nomeOrganizacao : undefined,
@@ -315,10 +332,36 @@ export default function ElaborarContrato() {
     dataInicio: dataInicioPJ,
     dataFim: dataFimPJ,
     dataAssinatura,
+    dadosContratanteCustom: orgConfig
+      ? {
+          razaoSocial: orgConfig.nome_organizacao,
+          qualificacao: orgConfig.natureza_juridica,
+          cnpj: orgConfig.cnpj,
+          endereco: orgConfig.endereco_completo,
+          representante: orgConfig.presidente_nome,
+          cpfRepresentante: orgConfig.presidente_cpf,
+          cargoRepresentante: orgConfig.presidente_cargo || 'Presidente',
+          foro: orgConfig.foro,
+          cidadeAssinatura: orgConfig.cidade
+            ? `${orgConfig.cidade}/${orgConfig.estado || 'MT'}`
+            : undefined,
+          termoParceria: orgConfig.termo_parceria_padrao,
+        }
+      : undefined,
   })
 
   // Gerador CLT fallback original
   const gerarTextoContratoCLT = () => {
+    const orgRazao = orgConfig?.nome_organizacao || DADOS_CONTRATANTE.razaoSocial
+    const orgCnpj = orgConfig?.cnpj || DADOS_CONTRATANTE.cnpj
+    const orgEnd = orgConfig?.endereco_completo || DADOS_CONTRATANTE.endereco
+    const orgRep = orgConfig?.presidente_nome || DADOS_CONTRATANTE.representante
+    const orgCpfRep = orgConfig?.presidente_cpf || DADOS_CONTRATANTE.cpfRepresentante
+    const orgCargo = orgConfig?.presidente_cargo || 'Presidente'
+    const orgCidade = orgConfig?.cidade
+      ? `${orgConfig.cidade}/${orgConfig.estado || 'MT'}`
+      : 'Cuiabá/MT'
+
     const valorFormatado = formatBRL(parseCurrencyBRL(valorCLT) || 0)
     let clauses = []
     let clauseNum = 1
@@ -369,7 +412,7 @@ export default function ElaborarContrato() {
 
     return `CONTRATO DE TRABALHO SOB REGIME DA CLT
 
-CONTRATANTE: ${DADOS_CONTRATANTE.razaoSocial}, CNPJ nº ${DADOS_CONTRATANTE.cnpj}, com sede em ${DADOS_CONTRATANTE.endereco}, representada por ${DADOS_CONTRATANTE.representante}, CPF nº ${DADOS_CONTRATANTE.cpfRepresentante}.
+CONTRATANTE: ${orgRazao}, CNPJ nº ${orgCnpj}, com sede em ${orgEnd}, representada por ${orgRep} (${orgCargo}), CPF nº ${orgCpfRep}.
 
 CONTRATADO: ${nomeCLT || '[NOME COMPLETO]'}, CPF nº ${documentoIdCLT || '[CPF]'}, admitido para a função de ${cargoFuncaoCLT || '[CARGO]'}.
 
@@ -377,10 +420,12 @@ As partes firmam o presente Contrato Individual de Trabalho sob as cláusulas a 
 
 ${clauses.join('\n\n')}
 
-Cuiabá/MT, ${formatDateBR(dataInicioCLT)}.
+${orgCidade}, ${formatDateBR(dataInicioCLT)}.
 
 _____________________________________
-${DADOS_CONTRATANTE.razaoSocial}
+${orgRazao}
+${orgRep} (${orgCargo})
+CNPJ: ${orgCnpj}
 
 _____________________________________
 ${nomeCLT || '[CONTRATADO]'}`
@@ -946,15 +991,21 @@ ${nomeCLT || '[CONTRATADO]'}`
                 <Info className="w-4 h-4 text-[#1FAF7A] shrink-0 mt-0.5" />
                 <div className="space-y-1">
                   <p className="font-semibold text-[#1E293B]">
-                    Dados Fixos da Contratante (Embutidos Automaticamente):
+                    Dados da Contratante (Conforme Configurações da Organização):
                   </p>
                   <p className="text-[11px]">
-                    <strong>{DADOS_CONTRATANTE.razaoSocial}</strong> (OSCIP em âmbito Nacional),
-                    CNPJ {DADOS_CONTRATANTE.cnpj}, sede em Cuiabá/MT, representada por{' '}
-                    {DADOS_CONTRATANTE.representante} (CPF {DADOS_CONTRATANTE.cpfRepresentante}), no
-                    âmbito do {DADOS_CONTRATANTE.termoParceria}, com Foro na Comarca de Cuiabá/MT.
+                    <strong>{orgConfig?.nome_organizacao || DADOS_CONTRATANTE.razaoSocial}</strong>{' '}
+                    (
+                    {orgConfig?.natureza_juridica ? 'OSCIP / Entidade' : 'OSCIP em âmbito Nacional'}
+                    ), CNPJ {orgConfig?.cnpj || DADOS_CONTRATANTE.cnpj}, sede em{' '}
+                    {orgConfig?.endereco_completo || 'Cuiabá/MT'}, representada por{' '}
+                    {orgConfig?.presidente_nome || DADOS_CONTRATANTE.representante} (
+                    {orgConfig?.presidente_cargo || 'Presidente'}, CPF{' '}
+                    {orgConfig?.presidente_cpf || DADOS_CONTRATANTE.cpfRepresentante}), no âmbito do{' '}
+                    {orgConfig?.termo_parceria_padrao || DADOS_CONTRATANTE.termoParceria}, com Foro
+                    na {orgConfig?.foro || 'Comarca de Cuiabá/MT'}.
                   </p>
-                </div>
+                </div>{' '}
               </div>
             </div>
           )}
@@ -1833,10 +1884,10 @@ ${nomeCLT || '[CONTRATADO]'}`
 
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold text-[#1E293B]">
-                      Local e Foro de Eleição (Fixo)
+                      Local e Foro de Eleição
                     </Label>
                     <Input
-                      value={`${DADOS_CONTRATANTE.cidadeAssinatura} — ${DADOS_CONTRATANTE.foro}`}
+                      value={`${orgConfig?.cidade ? `${orgConfig.cidade}/${orgConfig.estado || 'MT'}` : DADOS_CONTRATANTE.cidadeAssinatura} — ${orgConfig?.foro || DADOS_CONTRATANTE.foro}`}
                       disabled
                       className="bg-slate-50 text-xs font-medium text-slate-700"
                     />
