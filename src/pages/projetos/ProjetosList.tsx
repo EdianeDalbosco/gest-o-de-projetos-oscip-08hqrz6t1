@@ -121,7 +121,7 @@ export default function ProjetosList() {
   useRealtime('projetos', () => fetchProjetos())
 
   const filteredProjetos = useMemo(() => {
-    return projetos.filter((p) => {
+    const list = projetos.filter((p) => {
       const secNome = p.expand?.secretaria_id?.nome || ''
       const convNum = p.expand?.convenio_id?.numero_instrumento || ''
       const searchLower = search.toLowerCase()
@@ -133,6 +133,22 @@ export default function ProjetosList() {
         convNum.toLowerCase().includes(searchLower)
       const matchesStatus = statusFilter === 'todos' || p.status === statusFilter
       return matchesSearch && matchesStatus
+    })
+
+    // Ordenação alfabética (crescente) pelo nome do projeto em pt-BR (case-insensitive com sensibilidade a acentos)
+    // Nomes vazios ou nulos são posicionados no fim de forma estável.
+    return list.sort((a, b) => {
+      const nomeA = a.nome?.trim() || ''
+      const nomeB = b.nome?.trim() || ''
+
+      if (!nomeA && !nomeB) return 0
+      if (!nomeA) return 1
+      if (!nomeB) return -1
+
+      return nomeA.localeCompare(nomeB, 'pt-BR', {
+        sensitivity: 'accent',
+        usage: 'sort',
+      })
     })
   }, [projetos, search, statusFilter])
 
