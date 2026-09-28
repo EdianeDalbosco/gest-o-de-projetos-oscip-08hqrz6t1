@@ -19,6 +19,7 @@ import type {
 export async function getProjetos(): Promise<ProjetoRecord[]> {
   return pb.collection('projetos').getFullList<ProjetoRecord>({
     sort: '-created',
+    expand: 'secretaria_id,convenio_id',
   })
 }
 
