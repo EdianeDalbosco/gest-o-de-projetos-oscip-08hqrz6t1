@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import {
   FileSignature,
@@ -126,16 +126,24 @@ export default function ElaborarContrato() {
   const [representanteLegal, setRepresentanteLegal] = useState('')
   const [cpfRepresentante, setCpfRepresentante] = useState('')
 
-  // Objeto PJ
+  // Step 2 (Ordem 2): Vinculação: Instrumento OU Nome da Organização
+  const [tipoVinculoPJ, setTipoVinculoPJ] = useState<'instrumento' | 'organizacao'>('instrumento')
+  const [selectedConvenioId, setSelectedConvenioId] = useState<string>('')
+  const [nomeOrganizacao, setNomeOrganizacao] = useState('ORGANIZAÇÃO DE SAÚDE SÃO BENTO')
+
+  // Step 2 (Ordem 3): Se instrumento: Secretaria -> Projeto
+  const [secretariaIdPJ, setSecretariaIdPJ] = useState<string>('')
+  const [secretariaOrgao, setSecretariaOrgao] = useState('')
+  const [projetoIdPJ, setProjetoIdPJ] = useState<string>('')
+  const [projetoNome, setProjetoNome] = useState('')
+
+  // Step 2 (Ordem 4): Atividades
   const [atividadePrincipal, setAtividadePrincipal] = useState('')
-  const [secretariaOrgao, setSecretariaOrgao] = useState('Secretaria Municipal de Saúde')
-  const [projetoNome, setProjetoNome] = useState('Termo de Parceria nº 001/2026 - Saúde Dom Aquino')
-  const [projetoIdPJ, setProjetoIdPJ] = useState('')
   const [descricaoEscopo, setDescricaoEscopo] = useState(
     'a execução de atendimentos técnicos especializados, emissão de laudos, participação em reuniões clínicas e cumprimento integral das metas assistenciais pactuadas.',
   )
 
-  // Remuneração PJ
+  // Step 2 (Ordem 5): Remuneração PJ
   const [valorNumericoPJ, setValorNumericoPJ] = useState<string>(formatCurrencyBRL(5000))
   const [unidadePlantaoDemanda, setUnidadePlantaoDemanda] = useState('plantão de 12 horas')
   const [modalidadeRemuneracaoCombinada, setModalidadeRemuneracaoCombinada] = useState('mensal')
@@ -168,8 +176,15 @@ export default function ElaborarContrato() {
   const [erroSalvar, setErroSalvar] = useState<string | null>(null)
 
   const carregarDadosIniciais = () => {
+    getConvenios()
+      .then((convs) => {
+        setConvenios(convs)
+        if (convs.length > 0 && !selectedConvenioId) {
+          setSelectedConvenioId(convs[0].id)
+        }
+      })
+      .catch(console.error)
     getProjetos().then(setProjetos).catch(console.error)
-    getConvenios().then(setConvenios).catch(console.error)
     getSecretarias().then(setSecretarias).catch(console.error)
     getPrestadoresColaboradores().then(setPrestadoresList).catch(console.error)
     getCatalogoAtividades().then(setCatalogoAtividadesList).catch(console.error)
@@ -179,13 +194,61 @@ export default function ElaborarContrato() {
     carregarDadosIniciais()
   }, [])
 
-  // Atualiza nome do projeto caso selecione um projeto cadastrado
+  // Secretarias filtradas pelo instrumento selecionado (se houver)
+  const secretariasFiltradas = useMemo(() => {
+    if (!selectedConvenioId || selectedConvenioId === 'none') {
+      return secretarias
+    }
+    const porConvenio = secretarias.filter((s) => s.convenio_id === selectedConvenioId)
+    return porConvenio.length > 0 ? porConvenio : secretarias
+  }, [secretarias, selectedConvenioId])
+
+  // Projetos filtrados pela secretaria selecionada
+  const projetosFiltrados = useMemo(() => {
+    if (!secretariaIdPJ || secretariaIdPJ === 'none') {
+      return []
+    }
+    return projetos.filter((p) => p.secretaria_id === secretariaIdPJ)
+  }, [projetos, secretariaIdPJ])
+
+  // Catálogo de atividades filtrado pelo projeto selecionado
+  const catalogoFiltradoPorProjeto = useMemo(() => {
+    if (!projetoIdPJ || projetoIdPJ === 'none') {
+      return catalogoAtividadesList
+    }
+    return catalogoAtividadesList.filter((c) => c.projeto_id === projetoIdPJ)
+  }, [catalogoAtividadesList, projetoIdPJ])
+
+  // Manipulador quando usuário troca a Secretaria no fluxo de Instrumento
+  const handleSelectSecretariaPJ = (secId: string) => {
+    setSecretariaIdPJ(secId)
+    const sec = secretarias.find((s) => s.id === secId)
+    setSecretariaOrgao(sec ? sec.nome : '')
+
+    // Reseta projeto e atividade dependentes
+    setProjetoIdPJ('')
+    setProjetoNome('')
+    setSelectedAtividadeId('')
+  }
+
+  // Manipulador quando usuário seleciona o Projeto no fluxo de Instrumento
   const handleSelectProjetoPJ = (projId: string) => {
     setProjetoIdPJ(projId)
+    setSelectedAtividadeId('')
     if (projId && projId !== 'none') {
       const proj = projetos.find((p) => p.id === projId)
       if (proj) {
         setProjetoNome(proj.nome)
+        // Se o projeto tem valor mensal predefinido e ainda não tem atividade selecionada, pré-preenche
+        if (proj.valor_mensal_execucao && proj.valor_mensal_execucao > 0) {
+          setValorNumericoPJ(formatCurrencyBRL(proj.valor_mensal_execucao))
+        } else if (
+          proj.valor_total &&
+          proj.valor_total > 0 &&
+          (!proj.meses_duracao || proj.meses_duracao === 1)
+        ) {
+          setValorNumericoPJ(formatCurrencyBRL(proj.valor_total))
+        }
       }
     }
   }
@@ -217,6 +280,11 @@ export default function ElaborarContrato() {
     setItensAdicionais((prev) => prev.filter((item) => item.id !== id))
   }
 
+  // Instrumento selecionado atualmente
+  const instrumentoSelecionado = useMemo(() => {
+    return convenios.find((c) => c.id === selectedConvenioId)
+  }, [convenios, selectedConvenioId])
+
   // Objeto unificado com todos os dados do contrato PJ
   const getDadosContratoPJ = (): DadosContratoPJ => ({
     modelo: modeloPJ,
@@ -226,9 +294,17 @@ export default function ElaborarContrato() {
     enderecoEmpresarial,
     representanteLegal,
     cpfRepresentante,
+    tipoVinculoInstrumento: tipoVinculoPJ,
+    nomeInstrumento:
+      tipoVinculoPJ === 'instrumento'
+        ? instrumentoSelecionado?.nome ||
+          instrumentoSelecionado?.numero_instrumento ||
+          'Termo de Parceria nº 001/2026'
+        : undefined,
+    nomeOrganizacao: tipoVinculoPJ === 'organizacao' ? nomeOrganizacao : undefined,
     atividadePrincipal,
-    secretariaOrgao,
-    projeto: projetoNome,
+    secretariaOrgao: tipoVinculoPJ === 'instrumento' ? secretariaOrgao : '',
+    projeto: tipoVinculoPJ === 'instrumento' ? projetoNome : '',
     descricaoEscopo,
     valorNumerico: parseCurrencyBRL(valorNumericoPJ) || 0,
     unidadePlantaoDemanda,
@@ -328,8 +404,13 @@ ${nomeCLT || '[CONTRATADO]'}`
         if (prest.endereco) setEnderecoEmpresarial(prest.endereco)
         if (prest.profissional) setRepresentanteLegal(prest.profissional)
         if (prest.cpf_profissional) setCpfRepresentante(prest.cpf_profissional)
-        if (prest.cargo) setAtividadePrincipal(prest.cargo)
-        if (prest.remuneracao_base && prest.remuneracao_base > 0) {
+        // Apenas sugere cargo se atividade ainda vazia
+        if (prest.cargo && !atividadePrincipal) setAtividadePrincipal(prest.cargo)
+        if (
+          prest.remuneracao_base &&
+          prest.remuneracao_base > 0 &&
+          (!valorNumericoPJ || parseCurrencyBRL(valorNumericoPJ) === 0)
+        ) {
           setValorNumericoPJ(formatCurrencyBRL(prest.remuneracao_base))
         }
       } else {
@@ -557,13 +638,21 @@ ${nomeCLT || '[CONTRATADO]'}`
     if (tipo === 'CLT') {
       return Boolean(nomeCLT.trim() && cargoFuncaoCLT.trim() && parseCurrencyBRL(valorCLT) > 0)
     }
-    // PJ
-    return Boolean(
-      razaoSocial.trim() &&
-      cnpj.trim() &&
-      atividadePrincipal.trim() &&
-      parseCurrencyBRL(valorNumericoPJ) > 0,
-    )
+    // PJ: Validação estrita por ordem
+    // 1. Razão Social
+    if (!razaoSocial.trim() || !cnpj.trim()) return false
+    // 2. Instrumento vs Organização
+    if (tipoVinculoPJ === 'instrumento') {
+      if (!selectedConvenioId || !secretariaIdPJ || !projetoIdPJ) return false
+    } else {
+      if (!nomeOrganizacao.trim()) return false
+    }
+    // 4. Atividades
+    if (!atividadePrincipal.trim()) return false
+    // 5. Valor
+    if (!valorNumericoPJ || parseCurrencyBRL(valorNumericoPJ) <= 0) return false
+
+    return true
   }
 
   return (
@@ -888,19 +977,25 @@ ${nomeCLT || '[CONTRATADO]'}`
           {tipo === 'PJ' ? (
             /* FORMULÁRIO PJ */
             <div className="space-y-6">
-              {/* Box 1: CONTRATADA */}
+              {/* PASSO 1 DA ORDEM: 1. Razão Social da Empresa */}
               <div className="bg-white p-6 rounded-xl border border-[#E2E8F0] shadow-sm space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <div>
-                    <h3 className="text-sm font-bold text-[#1E293B] uppercase tracking-wide">
-                      1. Dados da Contratada (Pessoa Jurídica)
-                    </h3>
-                    <p className="text-xs text-[#64748B]">
-                      Preencha a qualificação empresarial e o representante legal da prestadora.
-                    </p>
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-6 h-6 rounded-full bg-[#1FAF7A] text-white flex items-center justify-center text-xs font-bold">
+                      1
+                    </span>
+                    <div>
+                      <h3 className="text-sm font-bold text-[#1E293B] uppercase tracking-wide">
+                        Razão Social da Empresa (Contratada PJ)
+                      </h3>
+                      <p className="text-xs text-[#64748B]">
+                        Selecione a empresa prestadora já cadastrada ou informe a razão social e
+                        qualificação manualmente.
+                      </p>
+                    </div>
                   </div>
-                  <span className="text-xs font-semibold bg-slate-100 text-slate-700 px-2 py-0.5 rounded">
-                    Preâmbulo
+                  <span className="text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded">
+                    Passo 1 de 5
                   </span>
                 </div>
 
@@ -908,9 +1003,9 @@ ${nomeCLT || '[CONTRATADO]'}`
                 {prestadoresList.filter((p) => p.tipo === 'PJ').length > 0 && (
                   <div className="p-3 bg-emerald-50/60 border border-emerald-200 rounded-lg space-y-1.5">
                     <Label className="text-xs font-bold text-emerald-900 flex items-center justify-between">
-                      <span>Buscar Prestador no Cadastro Centralizado:</span>
+                      <span>Buscar Prestador no Cadastro Centralizado (/prestadores):</span>
                       <span className="text-[11px] font-normal text-emerald-700">
-                        Preenchimento instantâneo
+                        Preenche os demais dados da empresa automaticamente
                       </span>
                     </Label>
                     <Select value={selectedPrestadorId} onValueChange={handleSelectPrestador}>
@@ -918,12 +1013,15 @@ ${nomeCLT || '[CONTRATADO]'}`
                         <SelectValue placeholder="Selecione um prestador já cadastrado ou digite abaixo..." />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="novo">+ Digitar novo prestador manualmente</SelectItem>
+                        <SelectItem value="novo">
+                          + Digitar novo prestador / razão social manualmente
+                        </SelectItem>
                         {prestadoresList
                           .filter((p) => p.tipo === 'PJ')
                           .map((p) => (
                             <SelectItem key={p.id} value={p.id}>
-                              {p.razao_social} {p.cnpj ? `(${p.cnpj})` : ''} - {p.cargo}
+                              {p.razao_social} {p.cnpj ? `(${p.cnpj})` : ''}{' '}
+                              {p.profissional ? `• Repr: ${p.profissional}` : ''}
                             </SelectItem>
                           ))}
                       </SelectContent>
@@ -934,12 +1032,13 @@ ${nomeCLT || '[CONTRATADO]'}`
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold text-[#1E293B]">
-                      Razão Social da Contratada *
+                      Razão Social da Empresa Contratada *
                     </Label>
                     <Input
                       value={razaoSocial}
                       onChange={(e) => setRazaoSocial(e.target.value)}
                       placeholder="Ex: MEDCLIN SERVIÇOS MÉDICOS LTDA"
+                      className="font-semibold text-xs"
                       required
                     />
                   </div>
@@ -952,18 +1051,22 @@ ${nomeCLT || '[CONTRATADO]'}`
                       value={naturezaJuridica}
                       onChange={(e) => setNaturezaJuridica(e.target.value)}
                       placeholder="Ex: Sociedade Limitada (LTDA) / Empresário Individual"
+                      className="text-xs"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-[#1E293B]">CNPJ *</Label>
+                    <Label className="text-xs font-semibold text-[#1E293B]">
+                      CNPJ da Empresa *
+                    </Label>
                     <Input
                       value={cnpj}
                       onChange={(e) => setCnpj(maskCnpj(e.target.value))}
                       placeholder="00.000.000/0001-00"
                       maxLength={18}
+                      className="font-mono text-xs"
                       required
                     />
                   </div>
@@ -976,6 +1079,7 @@ ${nomeCLT || '[CONTRATADO]'}`
                       value={enderecoEmpresarial}
                       onChange={(e) => setEnderecoEmpresarial(e.target.value)}
                       placeholder="Ex: Av. Historiador Rubens de Mendonça, 1200, Sala 402, Cuiabá/MT, CEP 78.050-000"
+                      className="text-xs"
                     />
                   </div>
                 </div>
@@ -989,6 +1093,7 @@ ${nomeCLT || '[CONTRATADO]'}`
                       value={representanteLegal}
                       onChange={(e) => setRepresentanteLegal(e.target.value)}
                       placeholder="Ex: Dr. Carlos Eduardo de Souza"
+                      className="text-xs"
                     />
                   </div>
 
@@ -1001,172 +1106,436 @@ ${nomeCLT || '[CONTRATADO]'}`
                       onChange={(e) => setCpfRepresentante(maskCpf(e.target.value))}
                       placeholder="000.000.000-00"
                       maxLength={14}
+                      className="font-mono text-xs"
                     />
                   </div>
                 </div>
               </div>
 
-              {/* Box 2: CLÁUSULA PRIMEIRA & ESCOPO */}
-              <div className="bg-white p-6 rounded-xl border border-[#E2E8F0] shadow-sm space-y-4">
-                <div className="border-b border-slate-100 pb-3">
-                  <h3 className="text-sm font-bold text-[#1E293B] uppercase tracking-wide">
-                    2. Objeto e Vinculação Institucional (Cláusulas 1ª a 3ª)
-                  </h3>
-                  <p className="text-xs text-[#64748B]">
-                    Atividade contratada, secretaria do município de Dom Aquino e projeto vinculado.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-[#1E293B]">
-                      {modeloPJ === 'plantao_demanda'
-                        ? 'Atividade de Plantão / Demanda *'
-                        : 'Atividade Principal / Mensal *'}
-                    </Label>
-                    <Input
-                      value={atividadePrincipal}
-                      onChange={(e) => setAtividadePrincipal(e.target.value)}
-                      placeholder={
-                        modeloPJ === 'plantao_demanda'
-                          ? 'Ex: Plantão Médico em Urgência e Emergência'
-                          : 'Ex: Serviços Médicos de Atenção Básica e Pediatria'
-                      }
-                      required
-                    />
+              {/* PASSO 2 DA ORDEM: 2. Selecionar o Instrumento ou Nome da Organização */}
+              <div
+                className={`bg-white p-6 rounded-xl border border-[#E2E8F0] shadow-sm space-y-4 transition-all ${
+                  !razaoSocial.trim() ? 'opacity-60 pointer-events-none' : ''
+                }`}
+              >
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-6 h-6 rounded-full bg-[#1FAF7A] text-white flex items-center justify-center text-xs font-bold">
+                      2
+                    </span>
+                    <div>
+                      <h3 className="text-sm font-bold text-[#1E293B] uppercase tracking-wide">
+                        Selecionar o Instrumento ou Nome da Organização
+                      </h3>
+                      <p className="text-xs text-[#64748B]">
+                        Escolha se o contrato está vinculado a um Instrumento Formal (ex: Termo de
+                        Parceria) ou informe o Nome da Organização (contrato não vinculado).
+                      </p>
+                    </div>
                   </div>
-
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-[#1E293B]">
-                      Secretaria / Órgão Demandante *
-                    </Label>
-                    <Select
-                      value={secretariaOrgao}
-                      onValueChange={(val) => {
-                        setSecretariaOrgao(val)
-                      }}
-                    >
-                      <SelectTrigger className="text-xs">
-                        <SelectValue placeholder="Selecione a Secretaria" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {secretarias.map((s) => (
-                          <SelectItem key={s.id} value={s.nome}>
-                            {s.nome}
-                          </SelectItem>
-                        ))}
-                        <SelectItem value="Secretaria Municipal de Saúde">
-                          Secretaria Municipal de Saúde
-                        </SelectItem>
-                        <SelectItem value="Secretaria Municipal de Obras Públicas e Urbanismo">
-                          Secretaria Municipal de Obras Públicas e Urbanismo
-                        </SelectItem>
-                        <SelectItem value="Secretaria Municipal de Educação">
-                          Secretaria Municipal de Educação
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-[#1E293B]">
-                      Projeto Vinculado *
-                    </Label>
-                    <Select value={projetoIdPJ || 'none'} onValueChange={handleSelectProjetoPJ}>
-                      <SelectTrigger className="text-xs">
-                        <SelectValue placeholder="Selecione um projeto cadastrado" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Texto Livre / Não vinculado</SelectItem>
-                        {projetos.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.nome}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Seleção a partir do Catálogo de Atividades do Projeto */}
-                {catalogoAtividadesList.length > 0 && (
-                  <div className="p-3 bg-sky-50/60 border border-sky-200 rounded-lg space-y-1.5">
-                    <Label className="text-xs font-bold text-sky-900 flex items-center justify-between">
-                      <span>Selecionar Atividade Prevista no Catálogo do Projeto:</span>
-                      <span className="text-[11px] font-normal text-sky-700">
-                        Traz valor unitário e escopo
-                      </span>
-                    </Label>
-                    <Select
-                      value={selectedAtividadeId}
-                      onValueChange={handleSelectAtividadeCatalogo}
-                    >
-                      <SelectTrigger className="bg-white text-xs h-9 border-sky-200">
-                        <SelectValue placeholder="Selecione uma atividade prevista no Plano de Trabalho..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="custom">+ Digitar atividade livre</SelectItem>
-                        {catalogoAtividadesList.map((cat) => (
-                          <SelectItem key={cat.id} value={cat.id}>
-                            {cat.descricao} ({cat.tipo_execucao}) - {formatBRL(cat.valor_unitario)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-[#1E293B]">
-                    Identificação do Projeto no Contrato (Cláusula Primeira) *
-                  </Label>
-                  <Input
-                    value={projetoNome}
-                    onChange={(e) => setProjetoNome(e.target.value)}
-                    placeholder="Ex: Projeto FORSAÚDE – Fortalecimento da Saúde Pública Municipal"
-                  />
-                  <span className="text-[11px] text-slate-500">
-                    O texto padrão cita:{' '}
-                    <em>
-                      vinculado ao Termo de Parceria nº 001/2026, firmado entre a Organização de
-                      Saúde São Bento e o Município de Dom Aquino/MT
-                    </em>
-                    .
+                  <span className="text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded">
+                    Passo 2 de 5
                   </span>
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-[#1E293B]">
-                    Parágrafo Primeiro — Escopo e Descrição Específica da Atividade *
-                  </Label>
-                  <Textarea
-                    rows={3}
-                    value={descricaoEscopo}
-                    onChange={(e) => setDescricaoEscopo(e.target.value)}
-                    placeholder="Descreva detalhadamente o escopo das atividades da CONTRATADA..."
-                  />
+                {/* Opções Instrumento vs Organização */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label
+                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3 ${
+                      tipoVinculoPJ === 'instrumento'
+                        ? 'border-[#1FAF7A] bg-[#1FAF7A]/5 shadow-sm'
+                        : 'border-slate-200 bg-white hover:border-slate-300'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="tipoVinculoPJ"
+                      value="instrumento"
+                      checked={tipoVinculoPJ === 'instrumento'}
+                      onChange={() => setTipoVinculoPJ('instrumento')}
+                      className="mt-1 text-[#1FAF7A]"
+                    />
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="w-4 h-4 text-[#1FAF7A]" />
+                        <span className="text-xs font-bold text-[#1E293B]">
+                          Vincular a um Instrumento
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#64748B] leading-relaxed">
+                        Contrato acessório a Instrumento / Termo de Parceria cadastrado, com
+                        vinculação a secretaria, plano de trabalho e catálogo de atividades.
+                      </p>
+                    </div>
+                  </label>
+
+                  <label
+                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3 ${
+                      tipoVinculoPJ === 'organizacao'
+                        ? 'border-[#1FAF7A] bg-[#1FAF7A]/5 shadow-sm'
+                        : 'border-slate-200 bg-white hover:border-slate-300'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="tipoVinculoPJ"
+                      value="organizacao"
+                      checked={tipoVinculoPJ === 'organizacao'}
+                      onChange={() => {
+                        setTipoVinculoPJ('organizacao')
+                        setSecretariaIdPJ('')
+                        setSecretariaOrgao('')
+                        setProjetoIdPJ('')
+                        setProjetoNome('')
+                        setSelectedAtividadeId('')
+                      }}
+                      className="mt-1 text-[#1FAF7A]"
+                    />
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Building className="w-4 h-4 text-[#1FAF7A]" />
+                        <span className="text-xs font-bold text-[#1E293B]">
+                          Contrato Não Vinculado (Nome da Organização)
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#64748B] leading-relaxed">
+                        Contrato direto da entidade sem vinculação a convênios ou instrumentos
+                        públicos específicos.
+                      </p>
+                    </div>
+                  </label>
                 </div>
+
+                {/* Conteúdo dependente de Instrumento vs Organização */}
+                {tipoVinculoPJ === 'instrumento' ? (
+                  <div className="space-y-1.5 pt-2">
+                    <Label className="text-xs font-semibold text-[#1E293B]">
+                      Selecione o Instrumento Cadastrado *
+                    </Label>
+                    <Select
+                      value={selectedConvenioId}
+                      onValueChange={(val) => {
+                        setSelectedConvenioId(val)
+                        // Limpa secretaria e projeto dependentes
+                        setSecretariaIdPJ('')
+                        setSecretariaOrgao('')
+                        setProjetoIdPJ('')
+                        setProjetoNome('')
+                        setSelectedAtividadeId('')
+                      }}
+                    >
+                      <SelectTrigger className="text-xs h-9 bg-white">
+                        <SelectValue placeholder="Selecione um instrumento / convênio..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {convenios.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.numero_instrumento ? `${c.numero_instrumento} — ` : ''}
+                            {c.nome} {c.municipio ? `(${c.municipio})` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {instrumentoSelecionado && (
+                      <p className="text-[11px] text-emerald-700 font-medium">
+                        Instrumento ativo: {instrumentoSelecionado.numero_instrumento} • Órgão:{' '}
+                        {instrumentoSelecionado.orgao_contratante ||
+                          instrumentoSelecionado.municipio}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-1.5 pt-2">
+                    <Label className="text-xs font-semibold text-[#1E293B]">
+                      Nome da Organização Contratante *
+                    </Label>
+                    <Input
+                      value={nomeOrganizacao}
+                      onChange={(e) => setNomeOrganizacao(e.target.value)}
+                      placeholder="Ex: ORGANIZAÇÃO DE SAÚDE SÃO BENTO"
+                      className="text-xs font-semibold"
+                    />
+                    <p className="text-[11px] text-slate-500">
+                      O contrato será elaborado em nome desta organização, sem vinculação a termo de
+                      parceria público.
+                    </p>
+                  </div>
+                )}
               </div>
 
-              {/* Box 3: REMUNERAÇÃO (CLÁUSULA SEXTA) */}
-              <div className="bg-white p-6 rounded-xl border border-[#E2E8F0] shadow-sm space-y-4">
+              {/* PASSO 3 DA ORDEM: 3. Se instrumento, selecionar o projeto e sua respectiva secretaria */}
+              {tipoVinculoPJ === 'instrumento' && (
+                <div
+                  className={`bg-white p-6 rounded-xl border border-[#E2E8F0] shadow-sm space-y-4 transition-all ${
+                    !selectedConvenioId ? 'opacity-60 pointer-events-none' : ''
+                  }`}
+                >
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-6 h-6 rounded-full bg-[#1FAF7A] text-white flex items-center justify-center text-xs font-bold">
+                        3
+                      </span>
+                      <div>
+                        <h3 className="text-sm font-bold text-[#1E293B] uppercase tracking-wide">
+                          Secretaria do Instrumento e Projeto / Plano de Trabalho
+                        </h3>
+                        <p className="text-xs text-[#64748B]">
+                          Selecione primeiro a secretaria do instrumento e, em seguida, o
+                          projeto/plano de trabalho vinculado a essa secretaria.
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded">
+                      Passo 3 de 5
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Secretaria */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-[#1E293B]">
+                        1º Selecione a Secretaria do Instrumento *
+                      </Label>
+                      <Select value={secretariaIdPJ} onValueChange={handleSelectSecretariaPJ}>
+                        <SelectTrigger className="text-xs h-9 bg-white">
+                          <SelectValue placeholder="Selecione a secretaria demandante..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {secretariasFiltradas.map((s) => (
+                            <SelectItem key={s.id} value={s.id}>
+                              {s.nome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {secretariaOrgao && (
+                        <p className="text-[11px] text-emerald-700">
+                          Secretaria selecionada: <strong>{secretariaOrgao}</strong>
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Projeto vinculado à Secretaria */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-[#1E293B]">
+                        2º Selecione o Projeto / Plano de Trabalho desta Secretaria *
+                      </Label>
+                      <Select
+                        value={projetoIdPJ}
+                        onValueChange={handleSelectProjetoPJ}
+                        disabled={!secretariaIdPJ}
+                      >
+                        <SelectTrigger className="text-xs h-9 bg-white">
+                          <SelectValue
+                            placeholder={
+                              !secretariaIdPJ
+                                ? 'Aguardando seleção da secretaria acima...'
+                                : projetosFiltrados.length === 0
+                                  ? 'Nenhum projeto cadastrado nesta secretaria'
+                                  : 'Selecione o projeto vinculado...'
+                            }
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {projetosFiltrados.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {p.nome}{' '}
+                              {p.valor_mensal_execucao
+                                ? `(Custo Mensal: ${formatBRL(p.valor_mensal_execucao)})`
+                                : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {projetoNome && (
+                        <p className="text-[11px] text-emerald-700">
+                          Projeto selecionado: <strong>{projetoNome}</strong>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {secretariaIdPJ && projetosFiltrados.length === 0 && (
+                    <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 text-xs text-amber-800">
+                      Nenhum projeto encontrado especificamente cadastrado para esta secretaria.
+                      Você pode cadastrar novos projetos na <strong>Lista de Projetos</strong>{' '}
+                      vinculando a esta secretaria.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* PASSO 4 DA ORDEM: 4. Selecionar as atividades se instrumento ou digitar se contrato não vinculado */}
+              <div
+                className={`bg-white p-6 rounded-xl border border-[#E2E8F0] shadow-sm space-y-4 transition-all ${
+                  tipoVinculoPJ === 'instrumento' && (!secretariaIdPJ || !projetoIdPJ)
+                    ? 'opacity-60 pointer-events-none'
+                    : ''
+                }`}
+              >
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <div>
-                    <h3 className="text-sm font-bold text-[#1E293B] uppercase tracking-wide">
-                      3. Remuneração e Forma de Pagamento (Cláusula Sexta)
-                    </h3>
-                    <p className="text-xs text-[#64748B]">
-                      {modeloPJ === 'mensal_plantao'
-                        ? 'Modelo Combinado: Valor base fixo + itens adicionais opcionais de plantão/demanda.'
-                        : modeloPJ === 'mensal'
-                          ? 'Modelo Mensal: Valor mensal fixo acordado.'
-                          : 'Modelo Plantão/Demanda: Valor por unidade/plantão executado.'}
-                    </p>
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-6 h-6 rounded-full bg-[#1FAF7A] text-white flex items-center justify-center text-xs font-bold">
+                      4
+                    </span>
+                    <div>
+                      <h3 className="text-sm font-bold text-[#1E293B] uppercase tracking-wide">
+                        Atividades do Contrato
+                      </h3>
+                      <p className="text-xs text-[#64748B]">
+                        {tipoVinculoPJ === 'instrumento'
+                          ? 'Selecione a atividade do Catálogo do Projeto (Anexo I PT) ou digite caso necessário.'
+                          : 'Digite livremente o objeto e as atividades da prestação de serviços.'}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded">
+                    Passo 4 de 5
+                  </span>
+                </div>
+
+                {tipoVinculoPJ === 'instrumento' ? (
+                  <div className="space-y-4">
+                    {/* Seletor do catálogo de atividades daquele projeto */}
+                    <div className="p-3 bg-sky-50/60 border border-sky-200 rounded-lg space-y-1.5">
+                      <Label className="text-xs font-bold text-sky-900 flex items-center justify-between">
+                        <span>Catálogo de Atividades do Projeto (Anexo I PT):</span>
+                        <span className="text-[11px] font-normal text-sky-700">
+                          {catalogoFiltradoPorProjeto.length} atividades disponíveis
+                        </span>
+                      </Label>
+                      <Select
+                        value={selectedAtividadeId}
+                        onValueChange={handleSelectAtividadeCatalogo}
+                      >
+                        <SelectTrigger className="bg-white text-xs h-9 border-sky-200">
+                          <SelectValue placeholder="Selecione uma atividade do catálogo do projeto..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="custom">+ Digitar atividade livremente</SelectItem>
+                          {catalogoFiltradoPorProjeto.map((cat) => (
+                            <SelectItem key={cat.id} value={cat.id}>
+                              {cat.descricao} {cat.tipo_execucao ? `(${cat.tipo_execucao})` : ''} —{' '}
+                              {formatBRL(cat.valor_unitario)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-[#1E293B]">
+                          Descrição / Título da Atividade Contratada *
+                        </Label>
+                        <Input
+                          value={atividadePrincipal}
+                          onChange={(e) => setAtividadePrincipal(e.target.value)}
+                          placeholder="Ex: Serviços Médicos Especializados / Atividade de Apoio"
+                          className="text-xs font-semibold"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-[#1E293B]">
+                          Identificação Formal do Projeto no Contrato
+                        </Label>
+                        <Input
+                          value={projetoNome}
+                          onChange={(e) => setProjetoNome(e.target.value)}
+                          placeholder="Ex: Projeto FORSAÚDE – Fortalecimento da Saúde Pública Municipal"
+                          className="text-xs"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-[#1E293B]">
+                        Parágrafo Primeiro — Escopo e Descrição Detalhada da Atividade *
+                      </Label>
+                      <Textarea
+                        rows={3}
+                        value={descricaoEscopo}
+                        onChange={(e) => setDescricaoEscopo(e.target.value)}
+                        placeholder="Descreva detalhadamente o escopo das atividades da CONTRATADA..."
+                        className="text-xs"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  /* NÃO VINCULADO: Digitação Livre */
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-[#1E293B]">
+                        Objeto / Atividade Principal Contratada *
+                      </Label>
+                      <Input
+                        value={atividadePrincipal}
+                        onChange={(e) => setAtividadePrincipal(e.target.value)}
+                        placeholder="Ex: Prestação de serviços de consultoria contábil e auditoria"
+                        className="text-xs font-semibold"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-[#1E293B]">
+                        Descrição Livre das Atividades e Escopo do Serviço *
+                      </Label>
+                      <Textarea
+                        rows={4}
+                        value={descricaoEscopo}
+                        onChange={(e) => setDescricaoEscopo(e.target.value)}
+                        placeholder="Descreva detalhadamente as atividades a serem executadas pelo prestador PJ, entregas esperadas, cronograma e obrigações técnicas..."
+                        className="text-xs"
+                        required
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* PASSO 5 DA ORDEM: 5. Se vinculado a instrumento, valor pré-definido / Digitação se não vinculado */}
+              <div
+                className={`bg-white p-6 rounded-xl border border-[#E2E8F0] shadow-sm space-y-4 transition-all ${
+                  !atividadePrincipal.trim() ? 'opacity-60 pointer-events-none' : ''
+                }`}
+              >
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-6 h-6 rounded-full bg-[#1FAF7A] text-white flex items-center justify-center text-xs font-bold">
+                      5
+                    </span>
+                    <div>
+                      <h3 className="text-sm font-bold text-[#1E293B] uppercase tracking-wide">
+                        Valor e Remuneração Contratual
+                      </h3>
+                      <p className="text-xs text-[#64748B]">
+                        {tipoVinculoPJ === 'instrumento'
+                          ? 'Valor pré-preenchido automaticamente a partir da atividade ou projeto/plano de trabalho. O usuário pode conferir e ajustar se necessário.'
+                          : 'Preenchimento manual livre do valor contratual acordado.'}
+                      </p>
+                    </div>
                   </div>
                   <span className="text-xs font-mono font-bold text-[#1FAF7A] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                     {formatBRL(parseCurrencyBRL(valorNumericoPJ) || 0)}
                   </span>
                 </div>
+
+                {tipoVinculoPJ === 'instrumento' &&
+                  selectedAtividadeId &&
+                  selectedAtividadeId !== 'custom' && (
+                    <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-800 flex items-center justify-between">
+                      <span>
+                        ✓ Valor pré-definido carregado da atividade selecionada no catálogo do
+                        projeto.
+                      </span>
+                      <span className="font-bold text-emerald-900">
+                        {formatBRL(parseCurrencyBRL(valorNumericoPJ) || 0)}
+                      </span>
+                    </div>
+                  )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
@@ -1206,6 +1575,7 @@ ${nomeCLT || '[CONTRATADO]'}`
                         value={unidadePlantaoDemanda}
                         onChange={(e) => setUnidadePlantaoDemanda(e.target.value)}
                         placeholder="Ex: plantão de 12 horas / demanda realizada / procedimento"
+                        className="text-xs"
                       />
                     </div>
                   )}
@@ -1219,7 +1589,7 @@ ${nomeCLT || '[CONTRATADO]'}`
                         value={modalidadeRemuneracaoCombinada}
                         onValueChange={setModalidadeRemuneracaoCombinada}
                       >
-                        <SelectTrigger className="text-xs">
+                        <SelectTrigger className="text-xs h-9 bg-white">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>

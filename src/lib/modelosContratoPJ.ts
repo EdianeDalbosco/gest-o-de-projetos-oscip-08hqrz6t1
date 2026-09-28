@@ -15,10 +15,12 @@ export interface ItemAdicionalContrato {
 
 export type EnquadramentoTributario = 'geral' | 'simples_mei'
 
+export type VinculoInstrumentoOuOrganizacao = 'instrumento' | 'organizacao'
+
 export interface DadosContratoPJ {
   modelo: ModeloContratoPJ
 
-  // CONTRATADA
+  // 1. CONTRATADA (Razão Social primeiro)
   razaoSocial: string
   naturezaJuridica: string
   cnpj: string
@@ -26,13 +28,20 @@ export interface DadosContratoPJ {
   representanteLegal: string
   cpfRepresentante: string
 
-  // Objeto & Projeto
-  atividadePrincipal: string // Ex: Serviços Médicos Especializados em Pediatria / Plantão em Urgência
-  secretariaOrgao: string // Ex: Secretaria Municipal de Saúde
-  projeto: string // Ex: Apoio à Saúde Básica de Dom Aquino
-  descricaoEscopo: string // Parágrafo Primeiro: descrição detalhada das atividades
+  // 2. Instrumento OU Nome da Organização
+  tipoVinculoInstrumento?: VinculoInstrumentoOuOrganizacao
+  nomeInstrumento?: string // Ex: "Termo de Parceria nº 001/2026"
+  nomeOrganizacao?: string // Se não vinculado a instrumento: ex: "ORGANIZAÇÃO DE SAÚDE SÃO BENTO" ou nome livre da entidade
 
-  // Remuneração Principal
+  // 3. Se instrumento, Secretaria e Projeto/Plano de Trabalho
+  secretariaOrgao: string // Ex: Secretaria Municipal de Saúde
+  projeto: string // Ex: Apoio à Saúde Básica de Dom Aquino / Plano de Trabalho
+
+  // 4. Atividades
+  atividadePrincipal: string // Atividade do catálogo ou descrição livre
+  descricaoEscopo: string // Detalhamento / escopo específico
+
+  // 5. Remuneração
   valorNumerico: number
   unidadePlantaoDemanda?: string // No modelo 3 (ex: "plantão de 12 horas", "demanda realizada", "unidade de serviço")
   modalidadeRemuneracaoCombinada?: string // No modelo 1: "[MENSAL / POR SERVIÇO / POR UNIDADE / POR PRODUÇÃO]" -> padrão "mensal"
@@ -133,6 +142,9 @@ export function gerarTextoContratoPJ(dados: DadosContratoPJ): string {
     enderecoEmpresarial,
     representanteLegal,
     cpfRepresentante,
+    tipoVinculoInstrumento = 'instrumento',
+    nomeInstrumento,
+    nomeOrganizacao,
     atividadePrincipal,
     secretariaOrgao,
     projeto,
@@ -147,6 +159,13 @@ export function gerarTextoContratoPJ(dados: DadosContratoPJ): string {
     dataFim,
     dataAssinatura,
   } = dados
+
+  const isInstrumento = tipoVinculoInstrumento === 'instrumento'
+  const instrumentoTexto = nomeInstrumento?.trim() || DADOS_CONTRATANTE.termoParceria
+  const organizacaoNomeContratante =
+    !isInstrumento && nomeOrganizacao?.trim()
+      ? nomeOrganizacao.trim()
+      : DADOS_CONTRATANTE.razaoSocial
 
   const valorFormatado = formatBRL(Number(valorNumerico) || 0)
   const valorExtenso = valorPorExtenso(Number(valorNumerico) || 0)
@@ -169,7 +188,7 @@ export function gerarTextoContratoPJ(dados: DadosContratoPJ): string {
   // Bloco de Preâmbulo padrão para os 3 modelos
   const preambulo = `CONTRATO DE PRESTAÇÃO DE SERVIÇO
 
-CONTRATANTE: ${DADOS_CONTRATANTE.razaoSocial}, ${DADOS_CONTRATANTE.qualificacao}, inscrita no CNPJ ${DADOS_CONTRATANTE.cnpj}, com sede na ${DADOS_CONTRATANTE.endereco}, neste ato representada por ${DADOS_CONTRATANTE.representante}, inscrita no CPF nº ${DADOS_CONTRATANTE.cpfRepresentante}, e
+CONTRATANTE: ${organizacaoNomeContratante}, ${DADOS_CONTRATANTE.qualificacao}, inscrita no CNPJ ${DADOS_CONTRATANTE.cnpj}, com sede na ${DADOS_CONTRATANTE.endereco}, neste ato representada por ${DADOS_CONTRATANTE.representante}, inscrita no CPF nº ${DADOS_CONTRATANTE.cpfRepresentante}, e
 
 CONTRATADA: ${cRazaoSocial}, pessoa jurídica de direito privado, de natureza jurídica ${cNatJuridica}, inscrita no CNPJ nº ${cCnpj}, com endereço empresarial em ${cEndereco}, neste ato representada por ${cRep}, inscrito(a) no CPF nº ${cCpfRep}.
 
@@ -177,41 +196,57 @@ As partes, acima identificadas, resolvem de comum acordo firmar o presente CONTR
 
   // Cláusula Primeira & Parágrafos
   let clausulaPrimeira = ''
-  if (modelo === 'plantao_demanda') {
-    const cAtividade = ph(atividadePrincipal, 'ATIVIDADE DE PLANTÃO / DEMANDA')
-    clausulaPrimeira = `Cláusula Primeira – O presente contrato tem por objeto a prestação de Serviço de ${cAtividade}, para atendimento às necessidades da ${cSecOrgao}, no âmbito do Projeto ${cProjeto}, vinculado ao Termo de Parceria nº 001/2026.
+  const cAtividade = ph(
+    atividadePrincipal,
+    modelo === 'plantao_demanda'
+      ? 'ATIVIDADE DE PLANTÃO / DEMANDA'
+      : 'ATIVIDADE PRINCIPAL / ATIVIDADE MENSAL',
+  )
+
+  if (isInstrumento) {
+    clausulaPrimeira = `Cláusula Primeira – O presente contrato tem por objeto a prestação de Serviço de ${cAtividade}, para atendimento às necessidades da ${cSecOrgao}, no âmbito do Projeto ${cProjeto}, vinculado ao ${instrumentoTexto}.
 
 Parágrafo Primeiro – A CONTRATADA executará as atividades inerentes ao objeto contratado, compreendendo ${cEscopo}.
 
-Parágrafo Segundo – Os serviços serão executados conforme as demandas da CONTRATANTE e da ${cSecOrgao}, mediante solicitação ou autorização prévia, visando ao atendimento das metas, objetivos e atividades previstas no Projeto ${cProjeto} e no Termo de Parceria nº 001/2026, firmado entre a Organização de Saúde São Bento e o Município de Dom Aquino/MT.
+Parágrafo Segundo – Os serviços serão ${modelo === 'plantao_demanda' ? 'executados conforme as demandas da CONTRATANTE e da ' + cSecOrgao + ', mediante solicitação ou autorização prévia' : 'desenvolvidos de acordo com as necessidades da CONTRATANTE e da ' + cSecOrgao}, visando ao atendimento das metas, objetivos e atividades previstas no Projeto ${cProjeto} e no ${instrumentoTexto}.
 
 Parágrafo Terceiro – Poderão ser executadas outras atividades correlatas e compatíveis com o objeto principal contratado, desde que necessárias à adequada execução das ações vinculadas ao Projeto ${cProjeto}, sem descaracterização do objeto e observadas as normas técnicas, operacionais e legais aplicáveis.
 
 Parágrafo Quarto – Além dos serviços estabelecidos nesta cláusula, a CONTRATADA deverá prestar as informações necessárias ao acompanhamento das ações, manter adequadamente os registros da execução e fornecer à CONTRATANTE, sempre que solicitado, relatórios, registros e demais informações relacionadas aos serviços, observada a legislação aplicável e as normas de proteção de dados pessoais.`
   } else {
-    // modelo 'mensal' e 'mensal_plantao'
-    const cAtividade = ph(atividadePrincipal, 'ATIVIDADE PRINCIPAL / ATIVIDADE MENSAL')
-    clausulaPrimeira = `Cláusula Primeira – O presente contrato tem por objeto a prestação de Serviço de ${cAtividade}, para atendimento às necessidades da ${cSecOrgao}, no âmbito do Projeto ${cProjeto}, vinculado ao Termo de Parceria nº 001/2026.
+    // Não vinculado a instrumento (Nome da Organização)
+    clausulaPrimeira = `Cláusula Primeira – O presente contrato tem por objeto a prestação de Serviço de ${cAtividade}, diretamente no âmbito das atividades institucionais da ${organizacaoNomeContratante}.
 
 Parágrafo Primeiro – A CONTRATADA executará as atividades inerentes ao objeto contratado, compreendendo ${cEscopo}.
 
-Parágrafo Segundo – Os serviços serão desenvolvidos de acordo com as necessidades da CONTRATANTE e da ${cSecOrgao}, visando ao atendimento das metas, objetivos e atividades previstas no Projeto ${cProjeto} e no Termo de Parceria nº 001/2026, firmado entre a Organização de Saúde São Bento e o Município de Dom Aquino/MT.
+Parágrafo Segundo – Os serviços serão ${modelo === 'plantao_demanda' ? 'executados conforme as demandas da CONTRATANTE, mediante solicitação ou autorização prévia' : 'desenvolvidos de acordo com as necessidades da CONTRATANTE'}, visando ao cumprimento de suas finalidades institucionais.
 
-Parágrafo Terceiro – Poderão ser executadas outras atividades correlatas e compatíveis com o objeto principal contratado, desde que necessárias à adequada execução das ações vinculadas ao Projeto ${cProjeto}, sem descaracterização do objeto e observadas as normas técnicas, operacionais e legais aplicáveis.
+Parágrafo Terceiro – Poderão ser executadas outras atividades correlatas e compatíveis com o objeto principal contratado, desde que necessárias à adequada execução das ações da CONTRATANTE, sem descaracterização do objeto e observadas as normas técnicas, operacionais e legais aplicáveis.
 
 Parágrafo Quarto – Além dos serviços estabelecidos nesta cláusula, a CONTRATADA deverá prestar as informações necessárias ao acompanhamento das ações, manter adequadamente os registros da execução e fornecer à CONTRATANTE, sempre que solicitado, relatórios, registros e demais informações relacionadas aos serviços, observada a legislação aplicável e as normas de proteção de dados pessoais.`
   }
 
-  // Cláusulas Segunda e Terceira (comuns)
-  const clausulaSegundaETerceira = `DO LOCAL DA PRESTAÇÃO DOS SERVIÇOS
+  // Cláusulas Segunda e Terceira
+  let clausulaSegundaETerceira = ''
+  if (isInstrumento) {
+    clausulaSegundaETerceira = `DO LOCAL DA PRESTAÇÃO DOS SERVIÇOS
 
 Cláusula Segunda – Os serviços serão prestados pela CONTRATADA, por seu representante legal, ou mediante a disponibilização de profissional habilitado, quando aplicável à natureza do objeto, junto à ${cSecOrgao} do Município de Dom Aquino/MT.
 
-Parágrafo Único – Este Contrato é instrumento acessório ao Termo de Parceria nº 001/2026, firmado entre a CONTRATANTE e a Prefeitura Municipal de Dom Aquino/MT, assinado em 15 de julho de 2026. Dessa forma, caso haja o término do contrato principal por qualquer motivo e a qualquer tempo, o presente contrato será automaticamente rescindido, independentemente de notificação, não cabendo multa ou indenização a qualquer das partes.
+Parágrafo Único – Este Contrato é instrumento acessório ao ${instrumentoTexto}. Dessa forma, caso haja o término do contrato principal por qualquer motivo e a qualquer tempo, o presente contrato será automaticamente rescindido, independentemente de notificação, não cabendo multa ou indenização a qualquer das partes.
 
 DAS UNIDADES DE ATUAÇÃO
 
 Cláusula Terceira – Os serviços serão prestados nas unidades, instalações ou demais locais definidos pela ${cSecOrgao}, conforme a natureza do objeto e a necessidade de execução do Projeto ${cProjeto}.`
+  } else {
+    clausulaSegundaETerceira = `DO LOCAL DA PRESTAÇÃO DOS SERVIÇOS
+
+Cláusula Segunda – Os serviços serão prestados pela CONTRATADA, por seu representante legal, ou mediante a disponibilização de profissional habilitado, nas dependências ou locais designados pela CONTRATANTE (${organizacaoNomeContratante}), ou de forma remota/externa conforme acordado entre as partes.
+
+DAS UNIDADES DE ATUAÇÃO
+
+Cláusula Terceira – Os serviços serão prestados nas unidades, instalações ou demais locais definidos pela CONTRATANTE, conforme a natureza do objeto contratado.`
+  }
 
   // Cláusulas Quarta e Quinta (Obrigações verbatim)
   const clausulasQuartaEQuinta = `DAS OBRIGAÇÕES DA CONTRATADA:
@@ -337,10 +372,13 @@ IV. COFINS - retenção de 3%.`
         const itemValExt = valorPorExtenso(item.valor || 0)
         const itemAtiv = ph(item.atividade, `ATIVIDADE ADICIONAL ${idx + 1}`)
         const itemUnid = ph(item.unidade, 'UNIDADE DE REMUNERAÇÃO')
-        return `${numeroRomano(idx)}. ${itemAtiv} - ${itemValFmt} (${itemValExt}) por ${itemUnid}, respeitados os limites e condições previstos no Plano de Trabalho vigente;`
+        const limiteObs = isInstrumento
+          ? ', respeitados os limites e condições previstos no Plano de Trabalho vigente'
+          : ''
+        return `${numeroRomano(idx)}. ${itemAtiv} - ${itemValFmt} (${itemValExt}) por ${itemUnid}${limiteObs};`
       })
 
-      blocoItensAdicionais = `Parágrafo Primeiro – Quando houver serviços adicionais, plantões ou atividades sob demanda previstos no Plano de Trabalho vigente, o valor acima poderá ser complementado exclusivamente quando tais serviços forem previamente solicitados ou autorizados, efetivamente realizados, comprovados e atestados, sendo:\n\n${linhasItens.join('\n\n')}`
+      blocoItensAdicionais = `Parágrafo Primeiro – Quando houver serviços adicionais, plantões ou atividades sob demanda${isInstrumento ? ' previstos no Plano de Trabalho vigente' : ''}, o valor acima poderá ser complementado exclusivamente quando tais serviços forem previamente solicitados ou autorizados, efetivamente realizados, comprovados e atestados, sendo:\n\n${linhasItens.join('\n\n')}`
     } else {
       blocoItensAdicionais = `Parágrafo Segundo – Não havendo atividade adicional, plantão ou serviço sob demanda aplicável à contratação, o Parágrafo Primeiro e seus itens deverão ser excluídos da versão final do contrato.`
     }
@@ -381,12 +419,26 @@ ${blocoCondicoes}
 ${blocoRetencoes}${blocoSimples}`
   }
 
-  // Cláusulas Sétima a Décima Sexta e Fechamento (verbatim idêntico em todos os modelos)
+  // Cláusulas Sétima a Décima Sexta e Fechamento
+  const clausulaSetimaVigencia = isInstrumento
+    ? `Cláusula Sétima – O presente contrato de prestação de serviços terá vigência de ${cVigencia}, com início em ${cDataInicio} e término em ${cDataFim}, podendo ser prorrogado ou renovado mediante instrumento próprio e desde que haja interesse entre as partes e compatibilidade com a vigência do ${instrumentoTexto}.
+
+Parágrafo Primeiro – O contrato poderá ser revisto, sempre que motivado por uma das partes e aceito pela outra, no que se refere aos valores, levando-se em conta os serviços e valores apresentados no Plano de Trabalho e ${instrumentoTexto}.`
+    : `Cláusula Sétima – O presente contrato de prestação de serviços terá vigência de ${cVigencia}, com início em ${cDataInicio} e término em ${cDataFim}, podendo ser prorrogado ou renovado mediante aditivo contratual e desde que haja mútuo interesse entre as partes.
+
+Parágrafo Primeiro – O contrato poderá ser revisto, sempre que motivado por uma das partes e aceito pela outra, no que se refere aos valores e ao escopo contratado.`
+
+  const clausulaFiscalizacao = isInstrumento
+    ? `Cláusula Nona – A execução dos serviços será acompanhada pela ${cSecOrgao} ou por representante designado, que validará relatórios, registros de execução e qualidade dos serviços, e pelo Departamento Administrativo da CONTRATANTE para permanente fiscalização e acompanhamento do cumprimento das metas e objetivos deste contrato.`
+    : `Cláusula Nona – A execução dos serviços será acompanhada pelo Departamento Administrativo da CONTRATANTE (${organizacaoNomeContratante}) ou por representante formalmente designado, para permanente fiscalização e acompanhamento do cumprimento do objeto deste contrato.`
+
+  const clausulaRescisaoHipotese = isInstrumento
+    ? `IV. Automaticamente, em caso de término, rescisão ou extinção do ${instrumentoTexto}, na forma prevista na Cláusula Segunda.`
+    : `IV. Por iniciativa unilateral imotivada de qualquer das partes, com aviso prévio de 30 (trinta) dias.`
+
   const clausulasFinais = `DO PRAZO E VIGÊNCIA CONTRATUAL
 
-Cláusula Sétima – O presente contrato de prestação de serviços terá vigência de ${cVigencia}, com início em ${cDataInicio} e término em ${cDataFim}, podendo ser prorrogado ou renovado mediante instrumento próprio e desde que haja interesse entre as partes e compatibilidade com a vigência do Termo de Parceria nº 001/2026.
-
-Parágrafo Primeiro – O contrato poderá ser revisto, sempre que motivado por uma das partes e aceito pela outra, no que se refere aos valores, levando-se em conta os serviços e valores apresentados no Plano de Trabalho e Termo de Parceria vigente.
+${clausulaSetimaVigencia}
 
 Parágrafo Segundo – O presente contrato poderá ser rescindido por qualquer uma das partes, mediante comunicação escrita à parte contrária, com antecedência mínima de 10 (dez) dias corridos, ressalvadas as hipóteses de rescisão imediata previstas neste instrumento.
 
@@ -398,7 +450,7 @@ Cláusula Oitava – A responsabilidade pela adequada execução técnica e oper
 
 DA FISCALIZAÇÃO
 
-Cláusula Nona – A execução dos serviços será acompanhada pela ${cSecOrgao} ou por representante designado, que validará relatórios, registros de execução e qualidade dos serviços, e pelo Departamento Administrativo da CONTRATANTE para permanente fiscalização e acompanhamento do cumprimento das metas e objetivos deste contrato.
+${clausulaFiscalizacao}
 
 Parágrafo Primeiro – A CONTRATADA declara aceitar integralmente as condições de execução dos serviços contratados.
 
@@ -430,7 +482,7 @@ II. Pelo não cumprimento, por qualquer das partes, das cláusulas aqui estabele
 
 III. A qualquer momento, por qualquer das partes, mediante comunicação escrita à outra parte, observadas as condições previstas neste instrumento;
 
-IV. Automaticamente, em caso de término, rescisão ou extinção do Termo de Parceria nº 001/2026, na forma prevista na Cláusula Segunda.
+${clausulaRescisaoHipotese}
 
 DA OBSERVÂNCIA À LGPD
 
@@ -451,7 +503,7 @@ Por estarem justos e acertados, firmam o presente contrato em duas vias, de igua
 ${DADOS_CONTRATANTE.cidadeAssinatura}, ${cDataAssinatura}.
 
 _____________________________________
-${DADOS_CONTRATANTE.razaoSocial}
+${organizacaoNomeContratante}
 CNPJ: ${DADOS_CONTRATANTE.cnpj}
 
 _____________________________________
