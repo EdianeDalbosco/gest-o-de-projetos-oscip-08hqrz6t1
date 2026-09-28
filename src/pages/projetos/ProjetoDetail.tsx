@@ -339,16 +339,26 @@ export default function ProjetoDetail() {
                           </td>
                           <td className="py-3 px-4 font-bold text-[#1E293B] tabular-nums">
                             {formatBRL(cat.valor_unitario)}
-                            {cat.tipo_execucao.includes('Plantão') ||
-                            cat.tipo_execucao.includes('Demanda') ? (
-                              <span className="text-[10px] text-[#64748B] font-normal ml-1">
-                                / unidade
-                              </span>
-                            ) : (
-                              <span className="text-[10px] text-[#64748B] font-normal ml-1">
-                                / mês
-                              </span>
-                            )}
+                            {(() => {
+                              const norm = (cat.tipo_execucao || '')
+                                .normalize('NFD')
+                                .replace(/[\u0300-\u036f]/g, '')
+                                .toLowerCase()
+                              const isDemanda =
+                                norm.includes('plantao') ||
+                                norm.includes('demanda') ||
+                                norm.includes('unidade') ||
+                                norm.includes('hora')
+                              return isDemanda ? (
+                                <span className="text-[10px] text-[#64748B] font-normal ml-1">
+                                  / unidade
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-[#64748B] font-normal ml-1">
+                                  / mês
+                                </span>
+                              )
+                            })()}
                           </td>
                           <td className="py-3 px-4 text-[11px] text-[#64748B]">
                             {cat.tipo_vinculo === 'CLT' && (cat.proventos || cat.encargos) ? (

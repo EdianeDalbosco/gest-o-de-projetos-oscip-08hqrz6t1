@@ -188,8 +188,15 @@ export function ModalNovoFaturamentoMensal({
       prev.map((it, idx) => {
         if (idx !== index) return it
         const base = ativ ? ativ.valor_unitario : it.remuneracaoBase
+        const tipoExecNorm = (ativ?.tipo_execucao || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
         const isDemanda =
-          ativ?.tipo_execucao === 'Plantão' || ativ?.tipo_execucao === 'Conforme Demanda'
+          tipoExecNorm.includes('plantao') ||
+          tipoExecNorm.includes('demanda') ||
+          tipoExecNorm.includes('unidade') ||
+          tipoExecNorm.includes('hora')
         const tipoStr = isDemanda ? 'Demanda' : 'Serviço Mensal'
         const refVal = it.ref || (isDemanda ? 1 : 31)
 

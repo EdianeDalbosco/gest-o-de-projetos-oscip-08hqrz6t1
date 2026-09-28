@@ -357,7 +357,16 @@ ${nomeCLT || '[CONTRATADO]'}`
       if (item.detalhes_escopo) {
         setDescricaoEscopo(item.detalhes_escopo)
       }
-      if (item.tipo_execucao === 'Plantão' || item.tipo_execucao === 'Conforme Demanda') {
+      const tipoExecNorm = (item.tipo_execucao || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+      if (
+        tipoExecNorm.includes('plantao') ||
+        tipoExecNorm.includes('demanda') ||
+        tipoExecNorm.includes('unidade') ||
+        tipoExecNorm.includes('hora')
+      ) {
         setUnidadePlantaoDemanda('plantão / demanda')
       }
     }

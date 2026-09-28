@@ -105,19 +105,28 @@ export function interpretarTipoVinculo(valor: unknown): 'CLT' | 'PJ' | null {
   return null
 }
 
-// Inferência de Tipo de Execução
+// Obter Tipo de Execução: se informado na planilha, preserva exatamente como está (com trim);
+// se vazio, aplica o fallback padrão conforme o vínculo (CLT -> "Mensal", PJ -> inferência/Serviço Mensal)
 export function inferirTipoExecucao(
   tipoVinculo: 'CLT' | 'PJ',
   rawExecucao?: unknown,
   rawDescricao?: string,
-): TipoExecucaoAtividade {
+): string {
+  if (rawExecucao !== undefined && rawExecucao !== null) {
+    const textoExec = String(rawExecucao).trim()
+    if (textoExec) {
+      return textoExec
+    }
+  }
+
+  // Fallback quando a coluna vier vazia na planilha
   if (tipoVinculo === 'CLT') return 'Mensal'
 
-  const texto = `${rawExecucao || ''} ${rawDescricao || ''}`.toLowerCase()
-  if (texto.includes('plantao') || texto.includes('plantão')) {
+  const textoDesc = `${rawDescricao || ''}`.toLowerCase()
+  if (textoDesc.includes('plantao') || textoDesc.includes('plantão')) {
     return 'Plantão'
   }
-  if (texto.includes('demanda') || texto.includes('conforme')) {
+  if (textoDesc.includes('demanda') || textoDesc.includes('conforme')) {
     return 'Conforme Demanda'
   }
   return 'Serviço Mensal'
@@ -398,6 +407,13 @@ export function ModalImportarAtividades({
         'Plantão',
         '1.800,00',
         'Plantões médicos presenciais na unidade conforme escala.',
+      ],
+      [
+        'Médico Especialista (Sob Demanda)',
+        'PJ',
+        'Conforme Demanda',
+        '1.500,00',
+        'Atendimentos e pareceres especializados conforme a demanda do serviço.',
       ],
       [
         'Enfermeiro Coordenador',

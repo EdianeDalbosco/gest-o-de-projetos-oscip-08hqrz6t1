@@ -138,7 +138,12 @@ export interface PrestadorColaboradorRecord extends RecordModel {
 }
 
 // CATÁLOGO DE ATIVIDADES DO PROJETO
-export type TipoExecucaoAtividade = 'Mensal' | 'Serviço Mensal' | 'Conforme Demanda' | 'Plantão'
+export type TipoExecucaoAtividade =
+  | 'Mensal'
+  | 'Serviço Mensal'
+  | 'Conforme Demanda'
+  | 'Plantão'
+  | (string & {})
 
 export interface CatalogoAtividadeRecord extends RecordModel {
   projeto_id: string

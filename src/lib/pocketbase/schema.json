@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-28T01:18:10.145Z",
+  "generatedAt": "2026-09-28T01:32:44.248Z",
   "collections": [
     {
       "name": "users",
@@ -1031,13 +1031,6 @@
           "selectValues": ["CLT", "PJ"]
         },
         {
-          "name": "tipo_execucao",
-          "type": "select",
-          "required": true,
-          "system": false,
-          "selectValues": ["Mensal", "Serviço Mensal", "Conforme Demanda", "Plantão"]
-        },
-        {
           "name": "descricao",
           "type": "text",
           "required": true,
@@ -1086,6 +1079,12 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "tipo_execucao",
+          "type": "text",
+          "required": true,
+          "system": false
         }
       ],
       "indexes": [

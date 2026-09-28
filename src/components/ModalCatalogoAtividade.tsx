@@ -195,25 +195,55 @@ export function ModalCatalogoAtividade({
 
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-[#1E293B]">Tipo de Execução *</Label>
-              <Select
-                value={tipoExecucao}
-                onValueChange={(val) => setTipoExecucao(val as TipoExecucaoAtividade)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {tipoVinculo === 'CLT' ? (
+              {tipoVinculo === 'CLT' ? (
+                <Select value={tipoExecucao} onValueChange={(val) => setTipoExecucao(val)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
                     <SelectItem value="Mensal">Mensal</SelectItem>
-                  ) : (
-                    <>
+                    {tipoExecucao && tipoExecucao !== 'Mensal' && (
+                      <SelectItem value={tipoExecucao}>{tipoExecucao}</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="space-y-1">
+                  <Select
+                    value={
+                      ['Serviço Mensal', 'Conforme Demanda', 'Plantão'].includes(tipoExecucao)
+                        ? tipoExecucao
+                        : 'outro'
+                    }
+                    onValueChange={(val) => {
+                      if (val !== 'outro') {
+                        setTipoExecucao(val)
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
                       <SelectItem value="Serviço Mensal">Serviço Mensal</SelectItem>
                       <SelectItem value="Conforme Demanda">Conforme Demanda</SelectItem>
                       <SelectItem value="Plantão">Plantão</SelectItem>
-                    </>
+                      {!['Serviço Mensal', 'Conforme Demanda', 'Plantão'].includes(
+                        tipoExecucao,
+                      ) && <SelectItem value="outro">Personalizado: {tipoExecucao}</SelectItem>}
+                    </SelectContent>
+                  </Select>
+                  {!['Serviço Mensal', 'Conforme Demanda', 'Plantão'].includes(tipoExecucao) && (
+                    <Input
+                      type="text"
+                      value={tipoExecucao}
+                      onChange={(e) => setTipoExecucao(e.target.value)}
+                      placeholder="Tipo de execução"
+                      className="h-8 text-xs mt-1"
+                    />
                   )}
-                </SelectContent>
-              </Select>
+                </div>
+              )}
             </div>
           </div>
 
