@@ -257,9 +257,9 @@ export function ModalConvenio({ open, onClose, onSuccess, convenioToEdit }: Moda
                 />
               </div>
               {valorGlobal && parseCurrencyBRL(valorGlobal) > 0 && (
-                <p className="text-[11px] text-[#64748B] flex items-center justify-between">
-                  <span>Valor:</span>
-                  <span className="font-semibold text-emerald-700">
+                <p className="text-[11px] text-[#64748B] flex items-center justify-between gap-1 flex-wrap">
+                  <span className="shrink-0">Valor:</span>
+                  <span className="font-semibold text-emerald-700 truncate">
                     {formatBRL(parseCurrencyBRL(valorGlobal))}
                   </span>
                 </p>

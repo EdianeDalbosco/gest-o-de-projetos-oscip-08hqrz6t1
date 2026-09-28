@@ -172,7 +172,7 @@ export function ModalEmpenho({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="emp-numero" className="text-xs font-semibold text-[#1E293B]">
                 Número do Empenho *
@@ -218,9 +218,9 @@ export function ModalEmpenho({
                 />
               </div>
               {valor && parseCurrencyBRL(valor) > 0 && (
-                <p className="text-[11px] text-[#64748B] flex items-center justify-between">
-                  <span>Valor:</span>
-                  <span className="font-semibold text-emerald-700">
+                <p className="text-[11px] text-[#64748B] flex items-center justify-between gap-1 flex-wrap">
+                  <span className="shrink-0">Valor:</span>
+                  <span className="font-semibold text-emerald-700 truncate">
                     {formatBRL(parseCurrencyBRL(valor))}
                   </span>
                 </p>
@@ -242,7 +242,7 @@ export function ModalEmpenho({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="emp-data" className="text-xs font-semibold text-[#1E293B]">
                 Data do Empenho

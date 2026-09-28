@@ -193,42 +193,44 @@ export function ModalRelatorioPrestacaoContas({
             <h2 className="text-xs font-black uppercase tracking-wider mb-2 border-b border-black pb-1">
               1. Demonstrativo Financeiro Sintético da Secretaria
             </h2>
-            <table className="w-full text-xs border-collapse border border-slate-300">
-              <thead>
-                <tr className="bg-slate-100 text-left font-bold border-b border-slate-300">
-                  <th className="p-2 border-r border-slate-300">Rubrica / Conceito</th>
-                  <th className="p-2 border-r border-slate-300 text-right">
-                    Valor Previsto (Planos)
-                  </th>
-                  <th className="p-2 border-r border-slate-300 text-right">Valor Empenhado</th>
-                  <th className="p-2 border-r border-slate-300 text-right">
-                    Valor Executado (Liquidado)
-                  </th>
-                  <th className="p-2 text-right">Saldo a Empenhar</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-b border-slate-200">
-                  <td className="p-2 border-r border-slate-300 font-semibold">
-                    Consolidado Geral da Secretaria
-                  </td>
-                  <td className="p-2 border-r border-slate-300 text-right font-medium">
-                    {formatBRL(valorPrevistoTotal)}
-                  </td>
-                  <td className="p-2 border-r border-slate-300 text-right font-medium">
-                    {formatBRL(valorEmpenhadoTotal)}
-                  </td>
-                  <td className="p-2 border-r border-slate-300 text-right font-medium">
-                    {formatBRL(valorExecutadoTotal)}
-                  </td>
-                  <td
-                    className={`p-2 text-right font-bold ${saldoDisponivel < 0 ? 'text-red-600' : 'text-black'}`}
-                  >
-                    {formatBRL(saldoDisponivel)}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[560px] text-xs border-collapse border border-slate-300">
+                <thead>
+                  <tr className="bg-slate-100 text-left font-bold border-b border-slate-300">
+                    <th className="p-2 border-r border-slate-300">Rubrica / Conceito</th>
+                    <th className="p-2 border-r border-slate-300 text-right">
+                      Valor Previsto (Planos)
+                    </th>
+                    <th className="p-2 border-r border-slate-300 text-right">Valor Empenhado</th>
+                    <th className="p-2 border-r border-slate-300 text-right">
+                      Valor Executado (Liquidado)
+                    </th>
+                    <th className="p-2 text-right">Saldo a Empenhar</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-slate-200">
+                    <td className="p-2 border-r border-slate-300 font-semibold">
+                      Consolidado Geral da Secretaria
+                    </td>
+                    <td className="p-2 border-r border-slate-300 text-right font-medium tabular-nums">
+                      {formatBRL(valorPrevistoTotal)}
+                    </td>
+                    <td className="p-2 border-r border-slate-300 text-right font-medium tabular-nums">
+                      {formatBRL(valorEmpenhadoTotal)}
+                    </td>
+                    <td className="p-2 border-r border-slate-300 text-right font-medium tabular-nums">
+                      {formatBRL(valorExecutadoTotal)}
+                    </td>
+                    <td
+                      className={`p-2 text-right font-bold tabular-nums ${saldoDisponivel < 0 ? 'text-red-600' : 'text-black'}`}
+                    >
+                      {formatBRL(saldoDisponivel)}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* Tabela de Empenhos Registrados */}
@@ -241,42 +243,57 @@ export function ModalRelatorioPrestacaoContas({
                 Nenhuma nota de empenho registrada para esta secretaria.
               </p>
             ) : (
-              <table className="w-full text-xs border-collapse border border-slate-300">
-                <thead>
-                  <tr className="bg-slate-100 text-left font-bold border-b border-slate-300">
-                    <th className="p-2 border-r border-slate-300 w-28">Nº Empenho</th>
-                    <th className="p-2 border-r border-slate-300 w-24">Data</th>
-                    <th className="p-2 border-r border-slate-300">Descrição / Objeto</th>
-                    <th className="p-2 border-r border-slate-300 text-center w-24">Status</th>
-                    <th className="p-2 text-right w-28">Valor (R$)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {empenhos.map((emp) => (
-                    <tr key={emp.id} className="border-b border-slate-200">
-                      <td className="p-2 border-r border-slate-300 font-mono font-bold">
-                        {emp.numero}
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[560px] text-xs border-collapse border border-slate-300">
+                  <thead>
+                    <tr className="bg-slate-100 text-left font-bold border-b border-slate-300">
+                      <th className="p-2 border-r border-slate-300 w-28 whitespace-nowrap">
+                        Nº Empenho
+                      </th>
+                      <th className="p-2 border-r border-slate-300 w-24 whitespace-nowrap">Data</th>
+                      <th className="p-2 border-r border-slate-300 min-w-[160px]">
+                        Descrição / Objeto
+                      </th>
+                      <th className="p-2 border-r border-slate-300 text-center w-24 whitespace-nowrap">
+                        Status
+                      </th>
+                      <th className="p-2 text-right w-28 whitespace-nowrap">Valor (R$)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {empenhos.map((emp) => (
+                      <tr key={emp.id} className="border-b border-slate-200">
+                        <td className="p-2 border-r border-slate-300 font-mono font-bold whitespace-nowrap">
+                          {emp.numero}
+                        </td>
+                        <td className="p-2 border-r border-slate-300 whitespace-nowrap">
+                          {formatDateBR(emp.data)}
+                        </td>
+                        <td className="p-2 border-r border-slate-300 break-words">
+                          {emp.descricao || '-'}
+                        </td>
+                        <td className="p-2 border-r border-slate-300 text-center uppercase text-[10px] font-bold whitespace-nowrap">
+                          {emp.status}
+                        </td>
+                        <td className="p-2 text-right font-medium tabular-nums whitespace-nowrap">
+                          {formatBRL(emp.valor)}
+                        </td>
+                      </tr>
+                    ))}
+                    <tr className="bg-slate-50 font-bold border-t border-slate-300">
+                      <td
+                        colSpan={4}
+                        className="p-2 border-r border-slate-300 text-right uppercase"
+                      >
+                        Total Empenhado:
                       </td>
-                      <td className="p-2 border-r border-slate-300">{formatDateBR(emp.data)}</td>
-                      <td className="p-2 border-r border-slate-300">{emp.descricao || '-'}</td>
-                      <td className="p-2 border-r border-slate-300 text-center uppercase text-[10px] font-bold">
-                        {emp.status}
-                      </td>
-                      <td className="p-2 text-right font-medium tabular-nums">
-                        {formatBRL(emp.valor)}
+                      <td className="p-2 text-right tabular-nums whitespace-nowrap">
+                        {formatBRL(valorEmpenhadoTotal)}
                       </td>
                     </tr>
-                  ))}
-                  <tr className="bg-slate-50 font-bold border-t border-slate-300">
-                    <td colSpan={4} className="p-2 border-r border-slate-300 text-right uppercase">
-                      Total Empenhado:
-                    </td>
-                    <td className="p-2 text-right tabular-nums">
-                      {formatBRL(valorEmpenhadoTotal)}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
 
@@ -309,62 +326,68 @@ export function ModalRelatorioPrestacaoContas({
                           Sem metas cadastradas neste plano.
                         </p>
                       ) : (
-                        <table className="w-full text-xs border-collapse border border-slate-200 mt-2">
-                          <thead>
-                            <tr className="bg-slate-100 text-left font-semibold border-b border-slate-200 text-[11px]">
-                              <th className="p-1.5 border-r border-slate-200">
-                                Meta / Ação Prevista
-                              </th>
-                              <th className="p-1.5 border-r border-slate-200 text-center w-20">
-                                Alvo
-                              </th>
-                              <th className="p-1.5 border-r border-slate-200 text-center w-20">
-                                Realizado
-                              </th>
-                              <th className="p-1.5 border-r border-slate-200 text-center w-16">
-                                %
-                              </th>
-                              <th className="p-1.5 border-r border-slate-200 text-center w-24">
-                                Prazo
-                              </th>
-                              <th className="p-1.5 text-center w-24">Situação</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {planoMetas.map((m) => {
-                              const alvo = m.quantidade_alvo || 0
-                              const realizada = m.quantidade_realizada || 0
-                              const perc =
-                                alvo > 0
-                                  ? Math.min(100, Math.round((realizada / alvo) * 100))
-                                  : m.status === 'concluida'
-                                    ? 100
-                                    : 0
-                              const isConcluida = m.status === 'concluida'
+                        <div className="overflow-x-auto">
+                          <table className="w-full min-w-[500px] text-xs border-collapse border border-slate-200 mt-2">
+                            <thead>
+                              <tr className="bg-slate-100 text-left font-semibold border-b border-slate-200 text-[11px]">
+                                <th className="p-1.5 border-r border-slate-200 min-w-[150px]">
+                                  Meta / Ação Prevista
+                                </th>
+                                <th className="p-1.5 border-r border-slate-200 text-center w-20 whitespace-nowrap">
+                                  Alvo
+                                </th>
+                                <th className="p-1.5 border-r border-slate-200 text-center w-20 whitespace-nowrap">
+                                  Realizado
+                                </th>
+                                <th className="p-1.5 border-r border-slate-200 text-center w-16 whitespace-nowrap">
+                                  %
+                                </th>
+                                <th className="p-1.5 border-r border-slate-200 text-center w-24 whitespace-nowrap">
+                                  Prazo
+                                </th>
+                                <th className="p-1.5 text-center w-24 whitespace-nowrap">
+                                  Situação
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {planoMetas.map((m) => {
+                                const alvo = m.quantidade_alvo || 0
+                                const realizada = m.quantidade_realizada || 0
+                                const perc =
+                                  alvo > 0
+                                    ? Math.min(100, Math.round((realizada / alvo) * 100))
+                                    : m.status === 'concluida'
+                                      ? 100
+                                      : 0
+                                const isConcluida = m.status === 'concluida'
 
-                              return (
-                                <tr key={m.id} className="border-b border-slate-200 text-[11px]">
-                                  <td className="p-1.5 border-r border-slate-200">{m.descricao}</td>
-                                  <td className="p-1.5 border-r border-slate-200 text-center">
-                                    {alvo > 0 ? alvo : '-'}
-                                  </td>
-                                  <td className="p-1.5 border-r border-slate-200 text-center">
-                                    {realizada}
-                                  </td>
-                                  <td className="p-1.5 border-r border-slate-200 text-center font-bold">
-                                    {perc}%
-                                  </td>
-                                  <td className="p-1.5 border-r border-slate-200 text-center">
-                                    {formatDateBR(m.prazo)}
-                                  </td>
-                                  <td className="p-1.5 text-center uppercase font-bold text-[10px]">
-                                    {isConcluida ? 'Concluída' : 'Em Andamento'}
-                                  </td>
-                                </tr>
-                              )
-                            })}
-                          </tbody>
-                        </table>
+                                return (
+                                  <tr key={m.id} className="border-b border-slate-200 text-[11px]">
+                                    <td className="p-1.5 border-r border-slate-200 break-words">
+                                      {m.descricao}
+                                    </td>
+                                    <td className="p-1.5 border-r border-slate-200 text-center whitespace-nowrap">
+                                      {alvo > 0 ? alvo : '-'}
+                                    </td>
+                                    <td className="p-1.5 border-r border-slate-200 text-center whitespace-nowrap">
+                                      {realizada}
+                                    </td>
+                                    <td className="p-1.5 border-r border-slate-200 text-center font-bold whitespace-nowrap">
+                                      {perc}%
+                                    </td>
+                                    <td className="p-1.5 border-r border-slate-200 text-center whitespace-nowrap">
+                                      {formatDateBR(m.prazo)}
+                                    </td>
+                                    <td className="p-1.5 text-center uppercase font-bold text-[10px] whitespace-nowrap">
+                                      {isConcluida ? 'Concluída' : 'Em Andamento'}
+                                    </td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
                       )}
                     </div>
                   )
@@ -383,45 +406,56 @@ export function ModalRelatorioPrestacaoContas({
                 Nenhum registro de atividade de prestador vinculado aos planos desta secretaria.
               </p>
             ) : (
-              <table className="w-full text-xs border-collapse border border-slate-300">
-                <thead>
-                  <tr className="bg-slate-100 text-left font-bold border-b border-slate-300">
-                    <th className="p-2 border-r border-slate-300 w-36">Prestador</th>
-                    <th className="p-2 border-r border-slate-300 w-24">Data</th>
-                    <th className="p-2 border-r border-slate-300">
-                      Descrição dos Serviços Executados
-                    </th>
-                    <th className="p-2 border-r border-slate-300 text-center w-20">Horas</th>
-                    <th className="p-2 text-center w-24">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {atividades.map((a) => (
-                    <tr key={a.id} className="border-b border-slate-200">
-                      <td className="p-2 border-r border-slate-300 font-semibold">
-                        {a.expand?.prestador_id?.nome || 'Prestador Vinculado'}
-                      </td>
-                      <td className="p-2 border-r border-slate-300">{formatDateBR(a.data)}</td>
-                      <td className="p-2 border-r border-slate-300">{a.descricao}</td>
-                      <td className="p-2 border-r border-slate-300 text-center font-bold">
-                        {a.horas}h
-                      </td>
-                      <td className="p-2 text-center uppercase text-[10px] font-bold">
-                        {a.status}
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[560px] text-xs border-collapse border border-slate-300">
+                  <thead>
+                    <tr className="bg-slate-100 text-left font-bold border-b border-slate-300">
+                      <th className="p-2 border-r border-slate-300 w-36 min-w-[130px]">
+                        Prestador
+                      </th>
+                      <th className="p-2 border-r border-slate-300 w-24 whitespace-nowrap">Data</th>
+                      <th className="p-2 border-r border-slate-300 min-w-[160px]">
+                        Descrição dos Serviços Executados
+                      </th>
+                      <th className="p-2 border-r border-slate-300 text-center w-20 whitespace-nowrap">
+                        Horas
+                      </th>
+                      <th className="p-2 text-center w-24 whitespace-nowrap">Status</th>
                     </tr>
-                  ))}
-                  <tr className="bg-slate-50 font-bold border-t border-slate-300">
-                    <td colSpan={3} className="p-2 border-r border-slate-300 text-right uppercase">
-                      Total de Horas Apuradas:
-                    </td>
-                    <td className="p-2 border-r border-slate-300 text-center font-bold">
-                      {atividades.reduce((s, a) => s + (Number(a.horas) || 0), 0)}h
-                    </td>
-                    <td className="p-2 text-center">-</td>
-                  </tr>
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {atividades.map((a) => (
+                      <tr key={a.id} className="border-b border-slate-200">
+                        <td className="p-2 border-r border-slate-300 font-semibold break-words">
+                          {a.expand?.prestador_id?.nome || 'Prestador Vinculado'}
+                        </td>
+                        <td className="p-2 border-r border-slate-300 whitespace-nowrap">
+                          {formatDateBR(a.data)}
+                        </td>
+                        <td className="p-2 border-r border-slate-300 break-words">{a.descricao}</td>
+                        <td className="p-2 border-r border-slate-300 text-center font-bold whitespace-nowrap">
+                          {a.horas}h
+                        </td>
+                        <td className="p-2 text-center uppercase text-[10px] font-bold whitespace-nowrap">
+                          {a.status}
+                        </td>
+                      </tr>
+                    ))}
+                    <tr className="bg-slate-50 font-bold border-t border-slate-300">
+                      <td
+                        colSpan={3}
+                        className="p-2 border-r border-slate-300 text-right uppercase"
+                      >
+                        Total de Horas Apuradas:
+                      </td>
+                      <td className="p-2 border-r border-slate-300 text-center font-bold whitespace-nowrap">
+                        {atividades.reduce((s, a) => s + (Number(a.horas) || 0), 0)}h
+                      </td>
+                      <td className="p-2 text-center">-</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
 
