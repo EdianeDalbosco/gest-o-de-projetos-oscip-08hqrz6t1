@@ -1,8 +1,33 @@
 import { jsPDF } from 'jspdf'
-import autoTable from 'jspdf-autotable'
+import autoTable, { type UserOptions } from 'jspdf-autotable'
 import type { ProjetoRecord } from '@/types'
 import { formatBRL, formatDateBR } from '@/components/StatusBadge'
 import { DADOS_CONTRATANTE } from '@/lib/modelosContratoPJ'
+
+/**
+ * Utilitário seguro para invocar o plugin autoTable compatível com Vite/ESM/CJS e builds de produção.
+ * Em alguns bundlers/transpiladores, a importação pode ser a função direta, default, ou estar anexada a doc.autoTable.
+ */
+function applyAutoTable(doc: jsPDF, options: UserOptions): void {
+  const candidateFn =
+    typeof autoTable === 'function'
+      ? autoTable
+      : (autoTable as unknown as { default?: unknown })?.default
+
+  if (typeof candidateFn === 'function') {
+    candidateFn(doc, options)
+    return
+  }
+
+  // Fallback se o plugin foi registrado diretamente na instância do jsPDF
+  const docWithAutoTable = doc as unknown as { autoTable?: (opts: UserOptions) => void }
+  if (typeof docWithAutoTable.autoTable === 'function') {
+    docWithAutoTable.autoTable(options)
+    return
+  }
+
+  throw new Error('Plugin jsPDF-AutoTable não foi inicializado corretamente no ambiente atual.')
+}
 
 export interface ExportProjetosOptions {
   projetos: ProjetoRecord[]
@@ -10,14 +35,42 @@ export interface ExportProjetosOptions {
   filtroStatus?: string
 }
 
-function formatarContratosTexto(contratos?: string | string[]): string {
+function formatarContratosTexto(contratos?: unknown): string {
   if (!contratos) return '—'
-  const list = Array.isArray(contratos) ? contratos : [contratos]
+  let list: string[] = []
+  if (Array.isArray(contratos)) {
+    list = contratos.map((c) =>
+      String(c || '')
+        .trim()
+        .toUpperCase(),
+    )
+  } else if (typeof contratos === 'string') {
+    // Pode vir como JSON string "["CLT","PJ"]" ou string única "PJ" ou "CLT, PJ"
+    const trimmed = contratos.trim()
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(trimmed)
+        if (Array.isArray(parsed)) {
+          list = parsed.map((c) =>
+            String(c || '')
+              .trim()
+              .toUpperCase(),
+          )
+        }
+      } catch {
+        list = [trimmed.toUpperCase()]
+      }
+    } else {
+      list = trimmed.split(/[,+;/]+/).map((s) => s.trim().toUpperCase())
+    }
+  }
+
   const hasCLT = list.includes('CLT')
   const hasPJ = list.includes('PJ')
   if (hasCLT && hasPJ) return 'CLT + PJ'
   if (hasCLT) return 'CLT'
   if (hasPJ) return 'PJ'
+  if (list.length > 0 && list[0]) return list.join(', ')
   return '—'
 }
 
@@ -63,40 +116,43 @@ export function exportarProjetosPdf({
   const totalCount = projetos.length
   const labelProjetos = totalCount === 1 ? '1 projeto' : `${totalCount} projetos`
 
-  const totalExecucao = projetos.reduce((acc, p) => acc + (p.valor_mensal_execucao || 0), 0)
-  const totalDespAdm = projetos.reduce((acc, p) => acc + (p.valor_mensal_despesas_adm || 0), 0)
-  const totalValor = projetos.reduce((acc, p) => acc + (p.valor_total || 0), 0)
+  const totalExecucao = (projetos || []).reduce(
+    (acc, p) => acc + (Number(p?.valor_mensal_execucao) || 0),
+    0,
+  )
+  const totalDespAdm = (projetos || []).reduce(
+    (acc, p) => acc + (Number(p?.valor_mensal_despesas_adm) || 0),
+    0,
+  )
+  const totalValor = (projetos || []).reduce((acc, p) => acc + (Number(p?.valor_total) || 0), 0)
 
   // Linhas da tabela
-  const tableRows = projetos.map((p) => {
-    const nomeProj = p.nome || 'Sem nome'
-    const desc = p.descricao ? `\n${p.descricao}` : ''
+  const tableRows = (projetos || []).map((p) => {
+    const nomeProj = (p?.nome || 'Sem nome').trim()
+    const desc = p?.descricao && p.descricao.trim() ? `\n${p.descricao.trim()}` : ''
     const projetoCell = `${nomeProj}${desc}`
 
-    const secNome = p.expand?.secretaria_id?.nome || p.parceiro || '—'
-    const convNum = p.expand?.convenio_id?.numero_instrumento
+    const secNome = p?.expand?.secretaria_id?.nome || p?.parceiro || '—'
+    const convNum = p?.expand?.convenio_id?.numero_instrumento
       ? `\nInst: ${p.expand.convenio_id.numero_instrumento}`
       : ''
     const secretariaCell = `${secNome}${convNum}`
 
-    const contratosCell = formatarContratosTexto(p.contratos_vinculados)
+    const contratosCell = formatarContratosTexto(p?.contratos_vinculados)
 
-    const execCell =
-      p.valor_mensal_execucao && p.valor_mensal_execucao > 0
-        ? formatBRL(p.valor_mensal_execucao)
-        : '—'
+    const valorExec = Number(p?.valor_mensal_execucao) || 0
+    const execCell = valorExec > 0 ? formatBRL(valorExec) : '—'
 
-    const admCell =
-      p.valor_mensal_despesas_adm && p.valor_mensal_despesas_adm > 0
-        ? formatBRL(p.valor_mensal_despesas_adm)
-        : '—'
+    const valorAdm = Number(p?.valor_mensal_despesas_adm) || 0
+    const admCell = valorAdm > 0 ? formatBRL(valorAdm) : '—'
 
-    const totalCell = formatBRL(p.valor_total || 0)
+    const valorTot = Number(p?.valor_total) || 0
+    const totalCell = formatBRL(valorTot)
 
-    const progresso = p.progresso || 0
-    const metasCell = progresso > 0 ? `${progresso}%` : '0%'
+    const progresso = Math.max(0, Math.min(100, Math.round(Number(p?.progresso) || 0)))
+    const metasCell = `${progresso}%`
 
-    const statusCell = formatarStatusTexto(p.status)
+    const statusCell = formatarStatusTexto(p?.status)
 
     return [
       projetoCell,
@@ -124,7 +180,7 @@ export function exportarProjetosPdf({
 
   // Montagem do cabeçalho institucional antes da tabela
   // Margens: L=14, R=14, Top=14
-  autoTable(doc, {
+  applyAutoTable(doc, {
     startY: 38,
     head: [
       [
@@ -169,14 +225,14 @@ export function exportarProjetosPdf({
       fillColor: [255, 255, 255],
     },
     columnStyles: {
-      0: { cellWidth: 70, halign: 'left' }, // Projeto
+      0: { cellWidth: 68, halign: 'left' }, // Projeto
       1: { cellWidth: 55, halign: 'left' }, // Secretaria / Instrumento
       2: { cellWidth: 22, halign: 'center' }, // Contratos
-      3: { cellWidth: 32, halign: 'right' }, // Execução Mensal
-      4: { cellWidth: 32, halign: 'right' }, // Desp Adm
+      3: { cellWidth: 31, halign: 'right' }, // Execução Mensal
+      4: { cellWidth: 31, halign: 'right' }, // Desp Adm
       5: { cellWidth: 32, halign: 'right', fontStyle: 'bold' }, // Valor Total
-      6: { cellWidth: 16, halign: 'center' }, // Metas %
-      7: { cellWidth: 20, halign: 'center' }, // Status
+      6: { cellWidth: 14, halign: 'center' }, // Metas %
+      7: { cellWidth: 16, halign: 'center' }, // Status
     },
     margin: { top: 38, bottom: 18, left: 14, right: 14 },
     didDrawPage: (data) => {
@@ -267,9 +323,15 @@ export function imprimirProjetos({
   const totalCount = projetos.length
   const labelProjetos = totalCount === 1 ? '1 projeto' : `${totalCount} projetos`
 
-  const totalExecucao = projetos.reduce((acc, p) => acc + (p.valor_mensal_execucao || 0), 0)
-  const totalDespAdm = projetos.reduce((acc, p) => acc + (p.valor_mensal_despesas_adm || 0), 0)
-  const totalValor = projetos.reduce((acc, p) => acc + (p.valor_total || 0), 0)
+  const totalExecucao = (projetos || []).reduce(
+    (acc, p) => acc + (Number(p?.valor_mensal_execucao) || 0),
+    0,
+  )
+  const totalDespAdm = (projetos || []).reduce(
+    (acc, p) => acc + (Number(p?.valor_mensal_despesas_adm) || 0),
+    0,
+  )
+  const totalValor = (projetos || []).reduce((acc, p) => acc + (Number(p?.valor_total) || 0), 0)
 
   const filtrosDesc: string[] = []
   if (filtroBusca && filtroBusca.trim()) {
@@ -279,30 +341,28 @@ export function imprimirProjetos({
     filtrosDesc.push(`Status: ${formatarStatusTexto(filtroStatus)}`)
   }
 
-  const linhasHtml = projetos
+  const linhasHtml = (projetos || [])
     .map((p) => {
-      const nomeProj = escapeHtml(p.nome || 'Sem nome')
-      const descProj = p.descricao ? `<div class="desc">${escapeHtml(p.descricao)}</div>` : ''
+      const nomeProj = escapeHtml(p?.nome || 'Sem nome')
+      const descProj = p?.descricao ? `<div class="desc">${escapeHtml(p.descricao)}</div>` : ''
 
-      const secNome = escapeHtml(p.expand?.secretaria_id?.nome || p.parceiro || '—')
-      const convNum = p.expand?.convenio_id?.numero_instrumento
+      const secNome = escapeHtml(p?.expand?.secretaria_id?.nome || p?.parceiro || '—')
+      const convNum = p?.expand?.convenio_id?.numero_instrumento
         ? `<div class="sub font-mono">Inst: ${escapeHtml(p.expand.convenio_id.numero_instrumento)}</div>`
         : ''
 
-      const contratos = formatarContratosTexto(p.contratos_vinculados)
-      const execVal =
-        p.valor_mensal_execucao && p.valor_mensal_execucao > 0
-          ? formatBRL(p.valor_mensal_execucao)
-          : '—'
-      const admVal =
-        p.valor_mensal_despesas_adm && p.valor_mensal_despesas_adm > 0
-          ? formatBRL(p.valor_mensal_despesas_adm)
-          : '—'
-      const totalVal = formatBRL(p.valor_total || 0)
+      const contratos = formatarContratosTexto(p?.contratos_vinculados)
+      const valorExec = Number(p?.valor_mensal_execucao) || 0
+      const execVal = valorExec > 0 ? formatBRL(valorExec) : '—'
 
-      const progresso = p.progresso || 0
-      const metas = progresso > 0 ? `${progresso}%` : '0%'
-      const status = formatarStatusTexto(p.status)
+      const valorAdm = Number(p?.valor_mensal_despesas_adm) || 0
+      const admVal = valorAdm > 0 ? formatBRL(valorAdm) : '—'
+
+      const totalVal = formatBRL(Number(p?.valor_total) || 0)
+
+      const progresso = Math.max(0, Math.min(100, Math.round(Number(p?.progresso) || 0)))
+      const metas = `${progresso}%`
+      const status = formatarStatusTexto(p?.status)
 
       return `
         <tr>

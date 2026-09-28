@@ -229,9 +229,10 @@ export default function ProjetosList() {
       })
     } catch (err) {
       console.error('Erro ao gerar PDF:', err)
+      const msg = err instanceof Error ? err.message : String(err)
       toast({
         title: 'Erro ao gerar PDF',
-        description: 'Não foi possível gerar o arquivo PDF. Tente novamente.',
+        description: `Não foi possível gerar o arquivo PDF (${msg || 'erro inesperado'}). Tente novamente.`,
         variant: 'destructive',
       })
     } finally {
