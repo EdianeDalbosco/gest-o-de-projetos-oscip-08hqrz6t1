@@ -26,6 +26,8 @@ import { StatusBadge, formatBRL, formatDateBR } from '@/components/StatusBadge'
 import { ModalProjeto } from '@/components/ModalProjeto'
 import { ModalNovaAtividade } from '@/components/ModalNovaAtividade'
 import { ModalCatalogoAtividade } from '@/components/ModalCatalogoAtividade'
+import { ModalImportarAtividades } from '@/components/ModalImportarAtividades'
+import { FileSpreadsheet } from 'lucide-react'
 import {
   getProjetoById,
   getAtividadesByProjeto,
@@ -58,6 +60,7 @@ export default function ProjetoDetail() {
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [atividadeModalOpen, setAtividadeModalOpen] = useState(false)
   const [catalogoModalOpen, setCatalogoModalOpen] = useState(false)
+  const [importarModalOpen, setImportarModalOpen] = useState(false)
   const [editingCatalogoAtiv, setEditingCatalogoAtiv] = useState<CatalogoAtividadeRecord | null>(
     null,
   )
@@ -261,17 +264,29 @@ export default function ProjetoDetail() {
                 plantões/demandas) com remuneração de referência.
               </p>
             </div>
-            <Button
-              size="sm"
-              onClick={() => {
-                setEditingCatalogoAtiv(null)
-                setCatalogoModalOpen(true)
-              }}
-              className="bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs font-semibold shrink-0"
-            >
-              <Plus className="w-3.5 h-3.5 mr-1" />
-              Nova Atividade no Catálogo
-            </Button>
+            <div className="flex items-center gap-2 flex-wrap shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setImportarModalOpen(true)}
+                className="text-xs font-semibold border-emerald-300 text-emerald-800 hover:bg-emerald-50 bg-white shadow-sm"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5 text-[#1FAF7A]" />
+                Importar Planilha
+              </Button>
+
+              <Button
+                size="sm"
+                onClick={() => {
+                  setEditingCatalogoAtiv(null)
+                  setCatalogoModalOpen(true)
+                }}
+                className="bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs font-semibold shadow-sm shadow-[#1FAF7A]/25"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" />
+                Nova Atividade no Catálogo
+              </Button>
+            </div>
           </div>
 
           <Card className="border-[#E2E8F0] overflow-hidden">
@@ -723,6 +738,15 @@ export default function ProjetoDetail() {
         onSuccess={fetchData}
         projetoId={projeto.id}
         atividadeToEdit={editingCatalogoAtiv}
+      />
+
+      {/* Modal Importar Atividades via Planilha */}
+      <ModalImportarAtividades
+        open={importarModalOpen}
+        onClose={() => setImportarModalOpen(false)}
+        onSuccess={fetchData}
+        projetoId={projeto.id}
+        catalogoExistente={catalogo}
       />
     </div>
   )
