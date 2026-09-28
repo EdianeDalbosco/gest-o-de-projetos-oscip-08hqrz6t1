@@ -546,11 +546,11 @@ export function ModalImportarPrestadores({
         'Tipo de Vínculo',
         'Nome / Razão Social',
         'CPF / CNPJ',
-        'Nome Profissional Designado / Cargo',
+        'Nome do Profissional Designado',
         'Tipo de Serviço / Modalidade',
         'Remuneração Base',
-        'Representante Legal',
-        'CPF Profissional / Representante',
+        'Nome do Representante Legal',
+        'CPF do Representante',
         'Natureza Jurídica',
         'Endereço',
         'E-mail',
@@ -651,11 +651,11 @@ export function ModalImportarPrestadores({
       { wch: 16 }, // Tipo de Vínculo
       { wch: 38 }, // Nome / Razão Social
       { wch: 22 }, // CPF / CNPJ
-      { wch: 36 }, // Nome Profissional Designado / Cargo
+      { wch: 36 }, // Nome do Profissional Designado
       { wch: 28 }, // Tipo de Serviço / Modalidade
       { wch: 20 }, // Remuneração Base
-      { wch: 28 }, // Representante Legal
-      { wch: 30 }, // CPF Profissional / Representante
+      { wch: 32 }, // Nome do Representante Legal
+      { wch: 24 }, // CPF do Representante
       { wch: 32 }, // Natureza Jurídica
       { wch: 38 }, // Endereço
       { wch: 28 }, // E-mail
@@ -813,11 +813,12 @@ export function ModalImportarPrestadores({
                     </p>
                   )}
                   <p className="text-[11px] text-[#64748B] mt-1">
-                    Colunas aceitas: <strong>Tipo</strong> (CLT ou PJ),{' '}
+                    Colunas aceitas: <strong>Tipo de Vínculo</strong> (CLT ou PJ),{' '}
                     <strong>Nome / Razão Social</strong>, <strong>CPF / CNPJ</strong>,{' '}
-                    <strong>Nome Profissional Designado / Cargo</strong>,{' '}
+                    <strong>Nome do Profissional Designado</strong>,{' '}
                     <strong>Tipo de Serviço / Modalidade</strong>, <strong>Remuneração Base</strong>
-                    , <strong>Representante Legal</strong>, <strong>Natureza Jurídica</strong> e{' '}
+                    , <strong>Nome do Representante Legal</strong>,{' '}
+                    <strong>CPF do Representante</strong>, <strong>Natureza Jurídica</strong> e{' '}
                     <strong>Endereço</strong>.
                   </p>
                 </div>
@@ -897,7 +898,7 @@ export function ModalImportarPrestadores({
                             <th className="py-2 px-3 font-semibold">Nome / Razão Social</th>
                             <th className="py-2 px-3 font-semibold w-36">Documento</th>
                             <th className="py-2 px-3 font-semibold">
-                              Profissional Designado / Cargo
+                              Nome do Profissional Designado
                             </th>
                             <th className="py-2 px-3 font-semibold w-28">Modalidade</th>
                             <th className="py-2 px-3 font-semibold w-24 text-right">Valor</th>
@@ -945,6 +946,7 @@ export function ModalImportarPrestadores({
                                 {l.representanteLegal && (
                                   <span className="text-[10px] text-[#64748B] block">
                                     Rep: {l.representanteLegal}
+                                    {l.cpfRepresentante && ` (CPF: ${l.cpfRepresentante})`}
                                   </span>
                                 )}
                                 {l.motivoErro && (
@@ -968,15 +970,19 @@ export function ModalImportarPrestadores({
                                 {l.cargoProfissao ? (
                                   <div>
                                     <span>{l.cargoProfissao}</span>
-                                    {l.tipoNormalizado === 'PJ' && (
+                                    {l.tipoNormalizado === 'PJ' ? (
                                       <span className="block text-[10px] text-emerald-700 font-normal">
                                         Profissional Designado
+                                      </span>
+                                    ) : (
+                                      <span className="block text-[10px] text-slate-500 font-normal">
+                                        Cargo
                                       </span>
                                     )}
                                   </div>
                                 ) : (
                                   <span className="text-red-500 italic">
-                                    [Sem Profissional/Cargo]
+                                    [Sem Profissional Designado]
                                   </span>
                                 )}
                               </td>

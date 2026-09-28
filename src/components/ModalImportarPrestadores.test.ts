@@ -64,27 +64,33 @@ describe('ModalImportarPrestadores - helpers', () => {
       expect(normalizarTexto('Razão Social / Nome')).toBe('razaosocialnome')
       expect(normalizarTexto('Tipo de Vínculo')).toBe('tipodevinculo')
       expect(normalizarTexto('Previsão & Provisão 13º')).toBe('previsaoprovisao13')
+      expect(normalizarTexto('Nome do Profissional Designado')).toBe('nomedoprofissionaldesignado')
       expect(normalizarTexto('Nome Profissional Designado')).toBe('nomeprofissionaldesignado')
+      expect(normalizarTexto('Nome do Representante Legal')).toBe('nomedorepresentantelegal')
+      expect(normalizarTexto('CPF do Representante')).toBe('cpfdorepresentante')
       expect(normalizarTexto('Responsável Técnico')).toBe('responsaveltecnico')
       expect(normalizarTexto('Atividade / Cargo')).toBe('atividadecargo')
     })
   })
 
   describe('mapeamento de cabeçalhos tolerante para cadastro PJ/CLT', () => {
-    it('reconhece cabeçalhos de Profissional Designado e Responsável Técnico', () => {
+    it('reconhece novos nomes exatos: Nome do Representante Legal, CPF do Representante e Nome do Profissional Designado', () => {
       const headers = [
         'Tipo de Vínculo',
-        'Razão Social',
-        'CNPJ',
-        'Nome Profissional Designado',
-        'Responsável Técnico',
-        'CPF Representante',
-        'Atividade / Serviço',
+        'Nome / Razão Social',
+        'CPF / CNPJ',
+        'Nome do Profissional Designado',
+        'Tipo de Serviço / Modalidade',
         'Remuneração Base',
+        'Nome do Representante Legal',
+        'CPF do Representante',
+        'Natureza Jurídica',
+        'Endereço',
       ].map(normalizarTexto)
 
       const cargoIdx = headers.findIndex(
         (h) =>
+          h.includes('nomedoprofissionaldesignado') ||
           h.includes('nomeprofissionaldesignado') ||
           h.includes('profissionaldesignado') ||
           h.includes('cargoprofissao') ||
@@ -92,17 +98,78 @@ describe('ModalImportarPrestadores - helpers', () => {
           h.includes('cargo') ||
           h.includes('atividade'),
       )
-      expect(cargoIdx).toBe(3) // 'Nome Profissional Designado'
+      expect(cargoIdx).toBe(3) // 'Nome do Profissional Designado'
 
       const repIdx = headers.findIndex(
         (h) =>
+          h.includes('nomedorepresentantelegal') ||
+          h.includes('nomedorepresentante') ||
           h.includes('nomeresponsaveltecnico') ||
           h.includes('responsaveltecnico') ||
           h.includes('representantelegal') ||
           h.includes('representante') ||
           h.includes('responsavel'),
       )
-      expect(repIdx).toBe(4) // 'Responsável Técnico'
+      expect(repIdx).toBe(6) // 'Nome do Representante Legal'
+
+      const cpfRepIdx = headers.findIndex(
+        (h) =>
+          h.includes('cpfdorepresentante') ||
+          h.includes('cpfresponsaveltecnico') ||
+          h.includes('cpfrepresentantelegal') ||
+          h.includes('cpfrepresentante') ||
+          h.includes('cpfresponsavel') ||
+          h.includes('cpfprof'),
+      )
+      expect(cpfRepIdx).toBe(7) // 'CPF do Representante'
+    })
+
+    it('mantém retrocompatibilidade com cabeçalhos anteriores (Responsável Técnico, CPF Profissional / Representante, Nome Profissional Designado / Cargo)', () => {
+      const headersLegados = [
+        'Tipo de Vínculo',
+        'Nome / Razão Social',
+        'CPF / CNPJ',
+        'Nome Profissional Designado / Cargo',
+        'Tipo de Serviço / Modalidade',
+        'Remuneração Base',
+        'Representante Legal (ou Responsável Técnico)',
+        'CPF Profissional / Representante',
+      ].map(normalizarTexto)
+
+      const cargoIdx = headersLegados.findIndex(
+        (h) =>
+          h.includes('nomedoprofissionaldesignado') ||
+          h.includes('nomeprofissionaldesignado') ||
+          h.includes('profissionaldesignado') ||
+          h.includes('cargoprofissao') ||
+          h.includes('cargofuncao') ||
+          h.includes('cargo') ||
+          h.includes('atividade'),
+      )
+      expect(cargoIdx).toBe(3) // 'Nome Profissional Designado / Cargo'
+
+      const repIdx = headersLegados.findIndex(
+        (h) =>
+          h.includes('nomedorepresentantelegal') ||
+          h.includes('nomedorepresentante') ||
+          h.includes('nomeresponsaveltecnico') ||
+          h.includes('responsaveltecnico') ||
+          h.includes('representantelegal') ||
+          h.includes('representante') ||
+          h.includes('responsavel'),
+      )
+      expect(repIdx).toBe(6) // 'Representante Legal (ou Responsável Técnico)'
+
+      const cpfRepIdx = headersLegados.findIndex(
+        (h) =>
+          h.includes('cpfdorepresentante') ||
+          h.includes('cpfresponsaveltecnico') ||
+          h.includes('cpfrepresentantelegal') ||
+          h.includes('cpfrepresentante') ||
+          h.includes('cpfresponsavel') ||
+          h.includes('cpfprof'),
+      )
+      expect(cpfRepIdx).toBe(7) // 'CPF Profissional / Representante'
     })
 
     it('aceita colunas legadas como "Cargo / Profissão" e "Atividade"', () => {
@@ -116,6 +183,7 @@ describe('ModalImportarPrestadores - helpers', () => {
 
       const cargoIdx = headersLegados.findIndex(
         (h) =>
+          h.includes('nomedoprofissionaldesignado') ||
           h.includes('nomeprofissionaldesignado') ||
           h.includes('profissionaldesignado') ||
           h.includes('cargoprofissao') ||
