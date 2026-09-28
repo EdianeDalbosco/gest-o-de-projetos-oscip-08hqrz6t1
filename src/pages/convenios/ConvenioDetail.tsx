@@ -223,16 +223,11 @@ export default function ConvenioDetail() {
     } else if (isTotalmenteAlocado) {
       percAlocacaoFormatado = '100%'
       percAlocacaoNumero = 100
-    } else if (percAlocacaoExato > 99.9 && percAlocacaoExato < 100) {
-      // Evita mostrar 100% quando na verdade é 99.92%
-      percAlocacaoFormatado = `${percAlocacaoExato.toFixed(1).replace('.', ',')}%`
-      percAlocacaoNumero = Number(percAlocacaoExato.toFixed(1))
-    } else if (percAlocacaoExato % 1 === 0) {
-      percAlocacaoFormatado = `${percAlocacaoExato.toFixed(0)}%`
-      percAlocacaoNumero = percAlocacaoExato
     } else {
-      percAlocacaoFormatado = `${percAlocacaoExato.toFixed(1).replace('.', ',')}%`
-      percAlocacaoNumero = Number(percAlocacaoExato.toFixed(1))
+      // Percentual real com 1 casa decimal, sem arredondar para cima (ex.: 99.9995% vira 99,9%)
+      const floored = Math.floor(percAlocacaoExato * 10) / 10
+      percAlocacaoFormatado = `${floored.toFixed(1).replace('.', ',')}%`
+      percAlocacaoNumero = floored
     }
 
     // Progresso de execução financeira: quanto do orçado foi executado/empenhado

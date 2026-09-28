@@ -136,8 +136,20 @@ export default function ConveniosList() {
     const totalExecutado = totalEmpenhado > 0 ? totalEmpenhado : totalExecutadoPlanos
 
     // Alocação orçamentária geral (orçado vs global)
-    const percAlocacaoGeral = totalGlobal > 0 ? Math.min(100, (totalOrcado / totalGlobal) * 100) : 0
+    const percAlocacaoGeralExato = totalGlobal > 0 ? (totalOrcado / totalGlobal) * 100 : 0
     const diffGlobalGeral = totalGlobal - totalOrcado
+    const isTotalmenteAlocadoGeral = Math.abs(diffGlobalGeral) < 0.01 && totalGlobal > 0
+
+    let percAlocacaoGeralLabel: string
+    if (totalGlobal <= 0) {
+      percAlocacaoGeralLabel = '0%'
+    } else if (isTotalmenteAlocadoGeral) {
+      percAlocacaoGeralLabel = '100%'
+    } else {
+      // Exibe percentual real truncado/formatado com 1 casa decimal sem arredondar para cima falsamente
+      const floored = Math.floor(percAlocacaoGeralExato * 10) / 10
+      percAlocacaoGeralLabel = `${floored.toFixed(1).replace('.', ',')}%`
+    }
 
     return {
       totalGlobal,
@@ -145,7 +157,9 @@ export default function ConveniosList() {
       totalEmpenhado,
       totalExecutado,
       diffGlobalGeral,
-      percAlocacaoGeral,
+      percAlocacaoGeral: percAlocacaoGeralExato,
+      percAlocacaoGeralLabel,
+      isTotalmenteAlocadoGeral,
     }
   }, [convenios, planos, projetos, empenhos])
 
@@ -227,21 +241,22 @@ export default function ConveniosList() {
               Alocação dos Recursos
             </span>
             <span className="text-xs font-bold text-[#1FAF7A] tabular-nums">
-              {statsGerais.percAlocacaoGeral >= 99.9 && statsGerais.diffGlobalGeral >= 0.01
-                ? `${statsGerais.percAlocacaoGeral.toFixed(1).replace('.', ',')}%`
-                : `${Math.round(statsGerais.percAlocacaoGeral)}%`}
+              {statsGerais.percAlocacaoGeralLabel}
             </span>
           </div>
           <p className="text-xl font-bold text-sky-700 mt-2 tabular-nums">
             {formatBRL(statsGerais.totalOrcado)}
           </p>
-          <Progress value={statsGerais.percAlocacaoGeral} className="h-1.5 mt-2" />
+          <Progress
+            value={Math.min(100, Math.max(0, statsGerais.percAlocacaoGeral))}
+            className="h-1.5 mt-2"
+          />
           <span className="text-[11px] text-[#94A3B8] mt-1 block truncate">
-            {statsGerais.diffGlobalGeral > 0.01
-              ? `Saldo a alocar: ${formatBRL(statsGerais.diffGlobalGeral)}`
-              : statsGerais.diffGlobalGeral < -0.01
-                ? `Excede em ${formatBRL(Math.abs(statsGerais.diffGlobalGeral))}`
-                : '100% alocado nos projetos'}
+            {statsGerais.totalGlobal > 0 && Math.abs(statsGerais.diffGlobalGeral) >= 0.01
+              ? statsGerais.diffGlobalGeral > 0
+                ? `Saldo a alocar: ${formatBRL(statsGerais.diffGlobalGeral)}`
+                : `Excede em ${formatBRL(Math.abs(statsGerais.diffGlobalGeral))}`
+              : '100% alocado nos projetos'}
           </span>
         </div>
       </div>
@@ -344,16 +359,17 @@ export default function ConveniosList() {
             const diffAlocacao = convValorGlobal - totalOrcado
             const is100Alocado = Math.abs(diffAlocacao) < 0.01 && convValorGlobal > 0
 
-            const percAlocacaoLabel =
-              convValorGlobal <= 0
-                ? '0%'
-                : is100Alocado
-                  ? '100%'
-                  : percAlocacaoExato > 99.9 && percAlocacaoExato < 100
-                    ? `${percAlocacaoExato.toFixed(1).replace('.', ',')}%`
-                    : percAlocacaoExato % 1 === 0
-                      ? `${percAlocacaoExato.toFixed(0)}%`
-                      : `${percAlocacaoExato.toFixed(1).replace('.', ',')}%`
+            // SÓ deve exibir 100% quando Math.abs(convValorGlobal - totalOrcado) < 0.01
+            // Caso contrário, exibir o percentual real com precisão de 1 casa decimal, sem arredondamento para cima
+            let percAlocacaoLabel: string
+            if (convValorGlobal <= 0) {
+              percAlocacaoLabel = '0%'
+            } else if (is100Alocado) {
+              percAlocacaoLabel = '100%'
+            } else {
+              const floored = Math.floor(percAlocacaoExato * 10) / 10
+              percAlocacaoLabel = `${floored.toFixed(1).replace('.', ',')}%`
+            }
 
             return (
               <div
@@ -457,11 +473,19 @@ export default function ConveniosList() {
                     <div className="flex justify-between text-[11px] text-[#94A3B8] mt-1 tabular-nums">
                       <span>Orçado: {formatBRL(totalOrcado)}</span>
                       <span>
-                        {diffAlocacao > 0.01
-                          ? `Saldo: ${formatBRL(diffAlocacao)}`
-                          : diffAlocacao < -0.01
-                            ? `Excede: ${formatBRL(Math.abs(diffAlocacao))}`
-                            : '100% alocado'}
+                        {convValorGlobal > 0 && Math.abs(diffAlocacao) >= 0.01 ? (
+                          diffAlocacao > 0 ? (
+                            <span className="text-amber-700 font-medium">
+                              Saldo: {formatBRL(diffAlocacao)}
+                            </span>
+                          ) : (
+                            <span className="text-red-700 font-medium">
+                              Excede: {formatBRL(Math.abs(diffAlocacao))}
+                            </span>
+                          )
+                        ) : (
+                          '100% alocado'
+                        )}
                       </span>
                     </div>
                   </div>
