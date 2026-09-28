@@ -16,6 +16,7 @@ import {
   Download,
   Printer,
   Loader2,
+  FileSpreadsheet,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -30,6 +31,7 @@ import { StatusBadge, formatBRL, formatDateBR } from '@/components/StatusBadge'
 import { ModalProjeto } from '@/components/ModalProjeto'
 import { getProjetos, deleteProjeto } from '@/services/api'
 import { exportarProjetosPdf, imprimirProjetos } from '@/services/exportProjetos'
+import { exportarAtividadesPorSecretariaExcel } from '@/services/exportAtividadesExcel'
 import { toast } from '@/hooks/use-toast'
 import { useRealtime } from '@/hooks/use-realtime'
 import type { ProjetoRecord } from '@/types'
@@ -63,6 +65,7 @@ export default function ProjetosList() {
   const [defaultConvenioId, setDefaultConvenioId] = useState<string | undefined>(undefined)
   const [loading, setLoading] = useState(true)
   const [exportingPdf, setExportingPdf] = useState(false)
+  const [exportingExcel, setExportingExcel] = useState(false)
   const [printing, setPrinting] = useState(false)
 
   const fetchProjetos = async () => {
@@ -304,6 +307,46 @@ export default function ProjetosList() {
     }
   }
 
+  const handleExportExcel = async () => {
+    if (filteredProjetos.length === 0) {
+      toast({
+        title: 'Nenhum projeto para exportar',
+        description:
+          'Ajuste os filtros ou a busca para selecionar projetos antes de exportar as atividades.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    try {
+      setExportingExcel(true)
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      const resultado = await exportarAtividadesPorSecretariaExcel({
+        projetos: filteredProjetos,
+        filtroBusca: search,
+        filtroStatus: statusFilter,
+      })
+
+      toast({
+        title: 'Planilha gerada com sucesso!',
+        description: `Exportadas ${resultado.totalLinhas} atividades com as secretarias vinculadas. Total: ${formatBRL(
+          resultado.totalGeral,
+        )}. O download iniciará automaticamente.`,
+      })
+    } catch (err) {
+      console.error('Erro ao exportar atividades para Excel:', err)
+      const msg = err instanceof Error ? err.message : String(err)
+      toast({
+        title: 'Erro ao gerar planilha Excel',
+        description:
+          msg || 'Ocorreu um erro ao carregar as atividades dos projetos. Tente novamente.',
+        variant: 'destructive',
+      })
+    } finally {
+      setExportingExcel(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Top Header & Actions */}
@@ -359,7 +402,25 @@ export default function ProjetosList() {
         {/* Actions: Export PDF, Print & View Mode Switcher */}
         <div className="flex flex-wrap items-center gap-2 self-start lg:self-auto">
           {/* Botões de Exportar e Imprimir */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleExportExcel}
+              disabled={exportingExcel || loading}
+              className="h-9 px-2.5 sm:px-3 text-xs font-semibold text-emerald-800 hover:text-emerald-900 bg-emerald-50/70 border-emerald-300 hover:bg-emerald-100/80 shadow-xs gap-1.5"
+              title="Exportar todas as atividades dos projetos apresentando as secretarias em planilha Excel (.xlsx)"
+            >
+              {exportingExcel ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" />
+              ) : (
+                <FileSpreadsheet className="w-3.5 h-3.5 text-[#1FAF7A]" />
+              )}
+              <span className="hidden sm:inline">Exportar Excel</span>
+              <span className="sm:hidden">Excel</span>
+            </Button>
+
             <Button
               type="button"
               variant="outline"
