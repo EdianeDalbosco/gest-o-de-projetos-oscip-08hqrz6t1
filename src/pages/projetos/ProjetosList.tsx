@@ -135,9 +135,27 @@ export default function ProjetosList() {
       return matchesSearch && matchesStatus
     })
 
-    // Ordenação alfabética (crescente) pelo nome do projeto em pt-BR (case-insensitive com sensibilidade a acentos)
-    // Nomes vazios ou nulos são posicionados no fim de forma estável.
+    // Ordenação priorizando a secretaria do projeto e mantendo o desempate pelo nome do projeto:
+    // 1. Ordem alfabética pelo nome da SECRETARIA (locale 'pt-BR', sensitivity 'accent').
+    //    Projetos sem secretaria vão para o fim, de forma estável.
+    // 2. DENTRO de cada secretaria, ordem alfabética pelo NOME DO PROJETO (pt-BR, sensitivity 'accent').
     return list.sort((a, b) => {
+      const secA = (a.expand?.secretaria_id?.nome || a.parceiro || '').trim()
+      const secB = (b.expand?.secretaria_id?.nome || b.parceiro || '').trim()
+
+      if (secA && !secB) return -1
+      if (!secA && secB) return 1
+
+      if (secA && secB) {
+        const secCompare = secA.localeCompare(secB, 'pt-BR', {
+          sensitivity: 'accent',
+          usage: 'sort',
+        })
+        if (secCompare !== 0) {
+          return secCompare
+        }
+      }
+
       const nomeA = a.nome?.trim() || ''
       const nomeB = b.nome?.trim() || ''
 
