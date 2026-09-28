@@ -40,13 +40,14 @@ export interface LinhaPlanilhaPrestador {
   nomeRazaoSocial: string
   cpfOuCnpjOriginal: string
   documentoFormatado: string
-  cargoProfissao: string
-  tipoServicoModalidade: string // Mantido exatamente como digitado
+  cargoProfissao: string // Profissional Designado / Especialidade (PJ) ou Cargo (CLT)
+  tipoServicoModalidade: string // Mantido exatamente como digitado (Modalidade / Atividade)
   remuneracaoBase: number
-  // Campos opcionais adicionais
+  // Campos adicionais e de identificação
+  profissionalDesignado?: string // Nomenclatura explícita para PJ
   email?: string
   telefone?: string
-  representanteLegal?: string
+  representanteLegal?: string // Responsável Técnico / Representante Legal (PJ)
   cpfRepresentante?: string
   orgaoSecretaria?: string
   naturezaJuridica?: string
@@ -279,26 +280,38 @@ export function ModalImportarPrestadores({
           h.includes('cnpjempresa'),
       )
 
+      // 1. Profissional Designado / Cargo / Especialidade
+      // Procura primeiro correspondências mais específicas para "Profissional Designado" ou "Cargo / Função"
       const cargoIdx = headers.findIndex(
         (h) =>
+          h.includes('nomeprofissionaldesignado') ||
+          h.includes('profissionaldesignado') ||
           h.includes('cargoprofissao') ||
+          h.includes('cargofuncao') ||
           h.includes('profissionalespecialidade') ||
           h.includes('especialidade') ||
-          h.includes('cargofuncao') ||
           h.includes('cargo') ||
           h.includes('funcao') ||
           h.includes('profissao') ||
-          h.includes('atividade'),
+          // Fallback para quando vier nomeado como "atividade" no modelo legado
+          h.includes('atividadeexercida') ||
+          h === 'atividade' ||
+          h.includes('atividadeprestada') ||
+          h.includes('atividades'),
       )
 
+      // 2. Tipo de Serviço / Modalidade de Execução (ou Atividade descritiva de serviço)
       const servicoIdx = headers.findIndex(
         (h) =>
           h.includes('tipodeservico') ||
           h.includes('tiposervico') ||
           h.includes('modalidade') ||
           h.includes('periodicidade') ||
+          h.includes('formadeexecucao') ||
+          h.includes('formaexecucao') ||
           h.includes('execucao') ||
-          h.includes('formaexecucao'),
+          // Se não encontrou cargo como "atividade", ou se houver coluna separada de atividade/serviço
+          (h.includes('atividade') && cargoIdx !== headers.indexOf(h)),
       )
 
       const valorIdx = headers.findIndex(
@@ -316,18 +329,26 @@ export function ModalImportarPrestadores({
       const telIdx = headers.findIndex(
         (h) => h.includes('telefone') || h.includes('celular') || h.includes('contato'),
       )
+      // Representante Legal / Responsável Técnico / Sócio
       const repIdx = headers.findIndex(
         (h) =>
+          h.includes('nomeresponsaveltecnico') ||
+          h.includes('responsaveltecnico') ||
           h.includes('representantelegal') ||
+          h.includes('nomerepresentante') ||
           h.includes('representante') ||
           h.includes('responsavel') ||
+          h.includes('socioadministrador') ||
           h.includes('socio'),
       )
       const cpfRepIdx = headers.findIndex(
         (h) =>
+          h.includes('cpfresponsaveltecnico') ||
+          h.includes('cpfrepresentantelegal') ||
           h.includes('cpfrepresentante') ||
           h.includes('cpfresponsavel') ||
-          h.includes('cpfdoresponsavel'),
+          h.includes('cpfdoresponsavel') ||
+          h.includes('cpfprof'),
       )
       const orgaoIdx = headers.findIndex(
         (h) =>
@@ -454,7 +475,7 @@ export function ModalImportarPrestadores({
           motivoErro = `CPF incompleto ou inválido (${digitsDoc.length} dígitos encontrados)`
         } else if (!rawCargo) {
           status = 'erro'
-          motivoErro = `${tipoNormalizado === 'PJ' ? 'Especialidade / Profissional' : 'Cargo'} obrigatório não informado`
+          motivoErro = `${tipoNormalizado === 'PJ' ? 'Nome do Profissional Designado / Especialidade' : 'Cargo'} obrigatório não informado`
         } else if (docJaExisteNoBanco) {
           status = 'duplicada'
           motivoErro = `Documento (${docFormatado}) já cadastrado no sistema (será ignorado)`
@@ -482,6 +503,7 @@ export function ModalImportarPrestadores({
           cargoProfissao: rawCargo,
           tipoServicoModalidade: rawServico,
           remuneracaoBase: valorNumerico,
+          profissionalDesignado: tipoNormalizado === 'PJ' ? rawCargo : undefined,
           email: email || undefined,
           telefone: telefone || undefined,
           representanteLegal: representante || undefined,
@@ -516,7 +538,7 @@ export function ModalImportarPrestadores({
     }
   }
 
-  // Baixar planilha modelo com exemplos PJ e CLT
+  // Baixar planilha modelo com exemplos PJ e CLT alinhados ao formulário de cadastro
   const handleDownloadModelo = () => {
     const wb = XLSX.utils.book_new()
     const dadosModelo = [
@@ -524,28 +546,68 @@ export function ModalImportarPrestadores({
         'Tipo de Vínculo',
         'Nome / Razão Social',
         'CPF / CNPJ',
-        'Cargo / Profissão',
+        'Nome Profissional Designado / Cargo',
         'Tipo de Serviço / Modalidade',
         'Remuneração Base',
         'Representante Legal',
-        'CPF Representante',
+        'CPF Profissional / Representante',
+        'Natureza Jurídica',
+        'Endereço',
         'E-mail',
         'Telefone',
         'Órgão / Secretaria / Setor',
         'Código Consisa',
+        'Situação Funcional',
       ],
       [
         'PJ',
         'Vitalis Fisioterapia Integrada LTDA',
         '12.345.678/0001-90',
-        'Fisioterapeuta Especialista',
+        'Fisioterapeuta',
         'Mensal',
         '4.800,00',
         'Dr. Roberto Alencar',
         '123.456.789-00',
+        'Sociedade Limitada (LTDA)',
+        'Av. Brasil, 450, Centro, Dom Aquino/MT',
         'contato@vitalisfisio.com.br',
-        '(11) 98765-4321',
+        '(66) 98765-4321',
         'Secretaria de Saúde',
+        '',
+        '',
+      ],
+      [
+        'PJ',
+        'Psicovita Serviços de Psicologia LTDA',
+        '23.456.789/0001-01',
+        'Psicólogo',
+        'Mensal',
+        '4.500,00',
+        'Dra. Mariana Costa e Silva',
+        '234.567.890-12',
+        'Sociedade Limitada Unipessoal (SLU)',
+        'Rua das Palmeiras, 120, Dom Aquino/MT',
+        'atendimento@psicovita.com.br',
+        '(66) 99876-5432',
+        'Secretaria de Saúde',
+        '',
+        '',
+      ],
+      [
+        'PJ',
+        'FonoAudio Reabilitação e Saúde LTDA',
+        '34.567.890/0001-12',
+        'Fonoaudiólogo',
+        'Mensal',
+        '4.200,00',
+        'Dr. Carlos Eduardo Meireles',
+        '345.678.901-23',
+        'Sociedade Limitada (LTDA)',
+        'Rua Goiás, 88, Centro, Dom Aquino/MT',
+        'fonoaudio@clinica.com.br',
+        '(66) 99123-4567',
+        'Secretaria de Saúde',
+        '',
         '',
       ],
       [
@@ -557,55 +619,50 @@ export function ModalImportarPrestadores({
         '2.650,00',
         '',
         '',
+        '',
+        'Rua das Flores, 45, Bairro União',
         'aline.santos@email.com',
-        '(11) 91234-5678',
+        '(66) 91234-5678',
         'PSF Vila Esperança',
         '391',
-      ],
-      [
-        'PJ',
-        'CardioLife Serviços Médicos LTDA',
-        '34.567.890/0001-12',
-        'Médico Cardiologista',
-        'Plantão',
-        '1.800,00',
-        'Dra. Camila Nogueira',
-        '456.789.012-34',
-        'clinica@cardiolife.med.br',
-        '(11) 97654-3210',
-        'Hospital Municipal',
-        '',
+        'Ativo',
       ],
       [
         'CLT',
         'Marcos Vinicius de Souza',
         '456.123.789-10',
         'Assistente Administrativo',
-        'Conforme Demanda',
+        'Mensal',
         '2.200,00',
         '',
         '',
+        '',
+        'Av. Cuiabá, 302, Dom Aquino/MT',
         'marcos.souza@email.com',
-        '(11) 94567-8901',
+        '(66) 94567-8901',
         'Sede Administrativa OSCIP',
         '405',
+        'Ativo',
       ],
     ]
     const ws = XLSX.utils.aoa_to_sheet(dadosModelo)
     // Larguras das colunas
     ws['!cols'] = [
       { wch: 16 }, // Tipo de Vínculo
-      { wch: 36 }, // Nome / Razão Social
+      { wch: 38 }, // Nome / Razão Social
       { wch: 22 }, // CPF / CNPJ
-      { wch: 28 }, // Cargo / Profissão
-      { wch: 26 }, // Tipo de Serviço / Modalidade
+      { wch: 36 }, // Nome Profissional Designado / Cargo
+      { wch: 28 }, // Tipo de Serviço / Modalidade
       { wch: 20 }, // Remuneração Base
-      { wch: 24 }, // Representante Legal
-      { wch: 20 }, // CPF Representante
-      { wch: 26 }, // E-mail
+      { wch: 28 }, // Representante Legal
+      { wch: 30 }, // CPF Profissional / Representante
+      { wch: 32 }, // Natureza Jurídica
+      { wch: 38 }, // Endereço
+      { wch: 28 }, // E-mail
       { wch: 18 }, // Telefone
       { wch: 26 }, // Órgão / Secretaria / Setor
       { wch: 16 }, // Código Consisa
+      { wch: 18 }, // Situação Funcional
     ]
     XLSX.utils.book_append_sheet(wb, ws, 'Prestadores e Colaboradores')
     XLSX.writeFile(wb, 'Modelo_Importacao_Prestadores_Colaboradores.xlsx')
@@ -758,8 +815,10 @@ export function ModalImportarPrestadores({
                   <p className="text-[11px] text-[#64748B] mt-1">
                     Colunas aceitas: <strong>Tipo</strong> (CLT ou PJ),{' '}
                     <strong>Nome / Razão Social</strong>, <strong>CPF / CNPJ</strong>,{' '}
-                    <strong>Cargo / Especialidade</strong>,{' '}
-                    <strong>Tipo de Serviço / Modalidade</strong> e <strong>Remuneração</strong>.
+                    <strong>Nome Profissional Designado / Cargo</strong>,{' '}
+                    <strong>Tipo de Serviço / Modalidade</strong>, <strong>Remuneração Base</strong>
+                    , <strong>Representante Legal</strong>, <strong>Natureza Jurídica</strong> e{' '}
+                    <strong>Endereço</strong>.
                   </p>
                 </div>
               </div>
@@ -837,7 +896,9 @@ export function ModalImportarPrestadores({
                             <th className="py-2 px-3 font-semibold w-16 text-center">Tipo</th>
                             <th className="py-2 px-3 font-semibold">Nome / Razão Social</th>
                             <th className="py-2 px-3 font-semibold w-36">Documento</th>
-                            <th className="py-2 px-3 font-semibold">Cargo / Especialidade</th>
+                            <th className="py-2 px-3 font-semibold">
+                              Profissional Designado / Cargo
+                            </th>
                             <th className="py-2 px-3 font-semibold w-28">Modalidade</th>
                             <th className="py-2 px-3 font-semibold w-24 text-right">Valor</th>
                             <th className="py-2 px-3 font-semibold w-28 text-center">Status</th>
@@ -904,8 +965,19 @@ export function ModalImportarPrestadores({
                                 )}
                               </td>
                               <td className="py-2 px-3 text-[#1E293B] font-medium">
-                                {l.cargoProfissao || (
-                                  <span className="text-red-500 italic">[Sem Cargo]</span>
+                                {l.cargoProfissao ? (
+                                  <div>
+                                    <span>{l.cargoProfissao}</span>
+                                    {l.tipoNormalizado === 'PJ' && (
+                                      <span className="block text-[10px] text-emerald-700 font-normal">
+                                        Profissional Designado
+                                      </span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-red-500 italic">
+                                    [Sem Profissional/Cargo]
+                                  </span>
                                 )}
                               </td>
                               <td className="py-2 px-3 text-[11px] text-[#64748B]">

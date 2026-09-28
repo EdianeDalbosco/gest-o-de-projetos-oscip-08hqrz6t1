@@ -64,6 +64,67 @@ describe('ModalImportarPrestadores - helpers', () => {
       expect(normalizarTexto('Razão Social / Nome')).toBe('razaosocialnome')
       expect(normalizarTexto('Tipo de Vínculo')).toBe('tipodevinculo')
       expect(normalizarTexto('Previsão & Provisão 13º')).toBe('previsaoprovisao13')
+      expect(normalizarTexto('Nome Profissional Designado')).toBe('nomeprofissionaldesignado')
+      expect(normalizarTexto('Responsável Técnico')).toBe('responsaveltecnico')
+      expect(normalizarTexto('Atividade / Cargo')).toBe('atividadecargo')
+    })
+  })
+
+  describe('mapeamento de cabeçalhos tolerante para cadastro PJ/CLT', () => {
+    it('reconhece cabeçalhos de Profissional Designado e Responsável Técnico', () => {
+      const headers = [
+        'Tipo de Vínculo',
+        'Razão Social',
+        'CNPJ',
+        'Nome Profissional Designado',
+        'Responsável Técnico',
+        'CPF Representante',
+        'Atividade / Serviço',
+        'Remuneração Base',
+      ].map(normalizarTexto)
+
+      const cargoIdx = headers.findIndex(
+        (h) =>
+          h.includes('nomeprofissionaldesignado') ||
+          h.includes('profissionaldesignado') ||
+          h.includes('cargoprofissao') ||
+          h.includes('cargofuncao') ||
+          h.includes('cargo') ||
+          h.includes('atividade'),
+      )
+      expect(cargoIdx).toBe(3) // 'Nome Profissional Designado'
+
+      const repIdx = headers.findIndex(
+        (h) =>
+          h.includes('nomeresponsaveltecnico') ||
+          h.includes('responsaveltecnico') ||
+          h.includes('representantelegal') ||
+          h.includes('representante') ||
+          h.includes('responsavel'),
+      )
+      expect(repIdx).toBe(4) // 'Responsável Técnico'
+    })
+
+    it('aceita colunas legadas como "Cargo / Profissão" e "Atividade"', () => {
+      const headersLegados = [
+        'Tipo de Vínculo',
+        'Nome / Razão Social',
+        'CPF / CNPJ',
+        'Atividade',
+        'Tipo de Serviço / Modalidade',
+      ].map(normalizarTexto)
+
+      const cargoIdx = headersLegados.findIndex(
+        (h) =>
+          h.includes('nomeprofissionaldesignado') ||
+          h.includes('profissionaldesignado') ||
+          h.includes('cargoprofissao') ||
+          h.includes('cargofuncao') ||
+          h.includes('cargo') ||
+          h === 'atividade' ||
+          h.includes('atividade'),
+      )
+      expect(cargoIdx).toBe(3) // mapeia 'Atividade' para cargo/profissional
     })
   })
 })
