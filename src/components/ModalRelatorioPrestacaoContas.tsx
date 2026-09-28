@@ -16,6 +16,7 @@ import type {
   MetaRecord,
   EmpenhoRecord,
   AtividadeRecord,
+  ProjetoRecord,
 } from '@/types'
 
 interface ModalRelatorioPrestacaoContasProps {
@@ -24,6 +25,7 @@ interface ModalRelatorioPrestacaoContasProps {
   convenio: ConvenioRecord
   secretaria: SecretariaRecord
   planos: PlanoTrabalhoRecord[]
+  projetos?: ProjetoRecord[]
   metas: MetaRecord[]
   empenhos: EmpenhoRecord[]
   atividades: AtividadeRecord[]
@@ -35,6 +37,7 @@ export function ModalRelatorioPrestacaoContas({
   convenio,
   secretaria,
   planos,
+  projetos = [],
   metas,
   empenhos,
   atividades,
@@ -43,10 +46,14 @@ export function ModalRelatorioPrestacaoContas({
     dateStyle: 'long',
   }).format(new Date())
 
-  // Cálculos financeiros
-  const valorPrevistoTotal = planos.reduce((sum, p) => sum + (Number(p.valor_previsto) || 0), 0)
+  // Cálculos financeiros: considera os orçamentos dos projetos cadastrados da secretaria ou planos legados
+  const totalOrcadoProjetos = projetos.reduce((sum, p) => sum + (Number(p.valor_total) || 0), 0)
+  const totalPrevistoPlanos = planos.reduce((sum, p) => sum + (Number(p.valor_previsto) || 0), 0)
+  const valorPrevistoTotal = totalOrcadoProjetos > 0 ? totalOrcadoProjetos : totalPrevistoPlanos
+
   const valorEmpenhadoTotal = empenhos.reduce((sum, e) => sum + (Number(e.valor) || 0), 0)
-  const valorExecutadoTotal = planos.reduce((sum, p) => sum + (Number(p.valor_executado) || 0), 0)
+  const totalExecutadoPlanos = planos.reduce((sum, p) => sum + (Number(p.valor_executado) || 0), 0)
+  const valorExecutadoTotal = valorEmpenhadoTotal > 0 ? valorEmpenhadoTotal : totalExecutadoPlanos
   const saldoDisponivel = valorPrevistoTotal - valorEmpenhadoTotal
 
   const handlePrint = () => {
@@ -199,7 +206,7 @@ export function ModalRelatorioPrestacaoContas({
                   <tr className="bg-slate-100 text-left font-bold border-b border-slate-300">
                     <th className="p-2 border-r border-slate-300">Rubrica / Conceito</th>
                     <th className="p-2 border-r border-slate-300 text-right">
-                      Valor Previsto (Planos)
+                      Valor Orçado (Projetos)
                     </th>
                     <th className="p-2 border-r border-slate-300 text-right">Valor Empenhado</th>
                     <th className="p-2 border-r border-slate-300 text-right">

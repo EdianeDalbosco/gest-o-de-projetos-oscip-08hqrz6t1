@@ -26,14 +26,29 @@ import {
 } from '@/components/ui/select'
 import { StatusBadge, formatBRL, formatDateBR } from '@/components/StatusBadge'
 import { ModalConvenio } from '@/components/ModalConvenio'
-import { getConvenios, deleteConvenio, getSecretarias, getPlanosTrabalho } from '@/services/api'
+import {
+  getConvenios,
+  deleteConvenio,
+  getSecretarias,
+  getPlanosTrabalho,
+  getProjetos,
+  getEmpenhos,
+} from '@/services/api'
 import { useRealtime } from '@/hooks/use-realtime'
-import type { ConvenioRecord, SecretariaRecord, PlanoTrabalhoRecord } from '@/types'
+import type {
+  ConvenioRecord,
+  SecretariaRecord,
+  PlanoTrabalhoRecord,
+  ProjetoRecord,
+  EmpenhoRecord,
+} from '@/types'
 
 export default function ConveniosList() {
   const [convenios, setConvenios] = useState<ConvenioRecord[]>([])
   const [secretarias, setSecretarias] = useState<SecretariaRecord[]>([])
   const [planos, setPlanos] = useState<PlanoTrabalhoRecord[]>([])
+  const [projetos, setProjetos] = useState<ProjetoRecord[]>([])
+  const [empenhos, setEmpenhos] = useState<EmpenhoRecord[]>([])
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('todos')
   const [modalOpen, setModalOpen] = useState(false)
@@ -42,14 +57,18 @@ export default function ConveniosList() {
 
   const fetchData = async () => {
     try {
-      const [convList, secList, planList] = await Promise.all([
+      const [convList, secList, planList, projList, empList] = await Promise.all([
         getConvenios(),
         getSecretarias(),
         getPlanosTrabalho(),
+        getProjetos(),
+        getEmpenhos(),
       ])
       setConvenios(convList)
       setSecretarias(secList)
       setPlanos(planList)
+      setProjetos(projList)
+      setEmpenhos(empList)
     } catch (err) {
       console.error(err)
     } finally {
@@ -73,6 +92,8 @@ export default function ConveniosList() {
   useRealtime('convenios', () => fetchData())
   useRealtime('secretarias', () => fetchData())
   useRealtime('planos_trabalho', () => fetchData())
+  useRealtime('projetos', () => fetchData())
+  useRealtime('empenhos', () => fetchData())
 
   const filteredConvenios = useMemo(() => {
     return convenios.filter((c) => {
@@ -106,19 +127,27 @@ export default function ConveniosList() {
   // Agregações financeiras globais dos convênios
   const statsGerais = useMemo(() => {
     const totalGlobal = convenios.reduce((s, c) => s + (Number(c.valor_global) || 0), 0)
+    const totalProjetos = projetos.reduce((s, p) => s + (Number(p.valor_total) || 0), 0)
     const totalPrevistoPlanos = planos.reduce((s, p) => s + (Number(p.valor_previsto) || 0), 0)
+    const totalOrcado = totalProjetos > 0 ? totalProjetos : totalPrevistoPlanos
+
+    const totalEmpenhado = empenhos.reduce((s, e) => s + (Number(e.valor) || 0), 0)
     const totalExecutadoPlanos = planos.reduce((s, p) => s + (Number(p.valor_executado) || 0), 0)
-    const percentualGeral =
-      totalPrevistoPlanos > 0
-        ? Math.min(100, Math.round((totalExecutadoPlanos / totalPrevistoPlanos) * 100))
-        : 0
+    const totalExecutado = totalEmpenhado > 0 ? totalEmpenhado : totalExecutadoPlanos
+
+    // Alocação orçamentária geral (orçado vs global)
+    const percAlocacaoGeral = totalGlobal > 0 ? Math.min(100, (totalOrcado / totalGlobal) * 100) : 0
+    const diffGlobalGeral = totalGlobal - totalOrcado
+
     return {
       totalGlobal,
-      totalPrevistoPlanos,
-      totalExecutadoPlanos,
-      percentualGeral,
+      totalOrcado,
+      totalEmpenhado,
+      totalExecutado,
+      diffGlobalGeral,
+      percAlocacaoGeral,
     }
-  }, [convenios, planos])
+  }, [convenios, planos, projetos, empenhos])
 
   return (
     <div className="space-y-6">
@@ -186,21 +215,34 @@ export default function ConveniosList() {
             {secretarias.length}
           </p>
           <span className="text-[11px] text-[#94A3B8] mt-1 block">
-            {planos.length} planos de trabalho ativos
+            {projetos.length > 0
+              ? `${projetos.length} projetos vinculados`
+              : `${planos.length} planos de trabalho ativos`}
           </span>
         </div>
 
         <div className="bg-white rounded-xl border border-[#E2E8F0] p-4">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#64748B] uppercase">
-              Execução Financeira
+              Alocação dos Recursos
             </span>
-            <span className="text-xs font-bold text-[#1FAF7A]">{statsGerais.percentualGeral}%</span>
+            <span className="text-xs font-bold text-[#1FAF7A] tabular-nums">
+              {statsGerais.percAlocacaoGeral >= 99.9 && statsGerais.diffGlobalGeral >= 0.01
+                ? `${statsGerais.percAlocacaoGeral.toFixed(1).replace('.', ',')}%`
+                : `${Math.round(statsGerais.percAlocacaoGeral)}%`}
+            </span>
           </div>
-          <p className="text-xl font-bold text-emerald-700 mt-2 tabular-nums">
-            {formatBRL(statsGerais.totalExecutadoPlanos)}
+          <p className="text-xl font-bold text-sky-700 mt-2 tabular-nums">
+            {formatBRL(statsGerais.totalOrcado)}
           </p>
-          <Progress value={statsGerais.percentualGeral} className="h-1.5 mt-2" />
+          <Progress value={statsGerais.percAlocacaoGeral} className="h-1.5 mt-2" />
+          <span className="text-[11px] text-[#94A3B8] mt-1 block truncate">
+            {statsGerais.diffGlobalGeral > 0.01
+              ? `Saldo a alocar: ${formatBRL(statsGerais.diffGlobalGeral)}`
+              : statsGerais.diffGlobalGeral < -0.01
+                ? `Excede em ${formatBRL(Math.abs(statsGerais.diffGlobalGeral))}`
+                : '100% alocado nos projetos'}
+          </span>
         </div>
       </div>
 
@@ -264,23 +306,54 @@ export default function ConveniosList() {
             // Secretarias deste convênio
             const convSecs = secretarias.filter((s) => s.convenio_id === conv.id)
             const secIds = new Set(convSecs.map((s) => s.id))
+
+            // Projetos deste convênio (ou via convenio_id ou via secretarias)
+            const convProjs = projetos.filter(
+              (p) => p.convenio_id === conv.id || (p.secretaria_id && secIds.has(p.secretaria_id)),
+            )
+
             // Planos deste convênio (ou via convenio_id ou via secretaria)
             const convPlanos = planos.filter(
               (p) => p.convenio_id === conv.id || secIds.has(p.secretaria_id),
             )
 
-            const totalPrevisto = convPlanos.reduce(
+            const convEmpenhos = empenhos.filter(
+              (e) => e.convenio_id === conv.id || (e.secretaria_id && secIds.has(e.secretaria_id)),
+            )
+
+            const totalOrcadoProjetos = convProjs.reduce(
+              (s, p) => s + (Number(p.valor_total) || 0),
+              0,
+            )
+            const totalPrevistoPlanos = convPlanos.reduce(
               (s, p) => s + (Number(p.valor_previsto) || 0),
               0,
             )
-            const totalExecutado = convPlanos.reduce(
+            const totalOrcado = totalOrcadoProjetos > 0 ? totalOrcadoProjetos : totalPrevistoPlanos
+
+            const totalEmpenhado = convEmpenhos.reduce((s, e) => s + (Number(e.valor) || 0), 0)
+            const totalExecutadoPlanos = convPlanos.reduce(
               (s, p) => s + (Number(p.valor_executado) || 0),
               0,
             )
-            const percExecucao =
-              totalPrevisto > 0
-                ? Math.min(100, Math.round((totalExecutado / totalPrevisto) * 100))
-                : 0
+            const totalExecutado = totalEmpenhado > 0 ? totalEmpenhado : totalExecutadoPlanos
+
+            const convValorGlobal = Number(conv.valor_global) || 0
+            const percAlocacaoExato =
+              convValorGlobal > 0 ? (totalOrcado / convValorGlobal) * 100 : 0
+            const diffAlocacao = convValorGlobal - totalOrcado
+            const is100Alocado = Math.abs(diffAlocacao) < 0.01 && convValorGlobal > 0
+
+            const percAlocacaoLabel =
+              convValorGlobal <= 0
+                ? '0%'
+                : is100Alocado
+                  ? '100%'
+                  : percAlocacaoExato > 99.9 && percAlocacaoExato < 100
+                    ? `${percAlocacaoExato.toFixed(1).replace('.', ',')}%`
+                    : percAlocacaoExato % 1 === 0
+                      ? `${percAlocacaoExato.toFixed(0)}%`
+                      : `${percAlocacaoExato.toFixed(1).replace('.', ',')}%`
 
             return (
               <div
@@ -340,7 +413,7 @@ export default function ConveniosList() {
                     </p>
                   )}
 
-                  {/* Mini pills com resumo: secretarias e planos */}
+                  {/* Mini pills com resumo: secretarias e projetos */}
                   <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100 text-xs">
                     <div className="flex items-center gap-1 text-[#475569] bg-slate-50 px-2 py-1 rounded-md border border-slate-200/60">
                       <Layers className="w-3.5 h-3.5 text-[#1FAF7A]" />
@@ -352,25 +425,44 @@ export default function ConveniosList() {
 
                     <div className="flex items-center gap-1 text-[#475569] bg-slate-50 px-2 py-1 rounded-md border border-slate-200/60">
                       <FileSignature className="w-3.5 h-3.5 text-[#1FAF7A]" />
-                      <span className="font-semibold text-[#1E293B]">{convPlanos.length}</span>
+                      <span className="font-semibold text-[#1E293B]">
+                        {convProjs.length > 0 ? convProjs.length : convPlanos.length}
+                      </span>
                       <span className="text-[11px] text-[#64748B]">
-                        {convPlanos.length === 1 ? 'plano' : 'planos'}
+                        {convProjs.length > 0
+                          ? convProjs.length === 1
+                            ? 'projeto'
+                            : 'projetos'
+                          : convPlanos.length === 1
+                            ? 'plano'
+                            : 'planos'}
                       </span>
                     </div>
                   </div>
                 </div>
 
                 <div className="mt-4 pt-3 border-t border-slate-100 space-y-3">
-                  {/* Barra de Execução Financeira dos Planos */}
+                  {/* Barra de Alocação Orçamentária dos Recursos */}
                   <div>
                     <div className="flex justify-between text-xs mb-1">
-                      <span className="text-[#64748B] font-medium">Execução dos Planos</span>
-                      <span className="font-bold text-[#1E293B] tabular-nums">{percExecucao}%</span>
+                      <span className="text-[#64748B] font-medium">Alocação nos Projetos</span>
+                      <span className="font-bold text-[#1FAF7A] tabular-nums">
+                        {percAlocacaoLabel}
+                      </span>
                     </div>
-                    <Progress value={percExecucao} className="h-2" />
+                    <Progress
+                      value={Math.min(100, Math.max(0, percAlocacaoExato))}
+                      className="h-2"
+                    />
                     <div className="flex justify-between text-[11px] text-[#94A3B8] mt-1 tabular-nums">
-                      <span>Executado: {formatBRL(totalExecutado)}</span>
-                      <span>Previsto: {formatBRL(totalPrevisto)}</span>
+                      <span>Orçado: {formatBRL(totalOrcado)}</span>
+                      <span>
+                        {diffAlocacao > 0.01
+                          ? `Saldo: ${formatBRL(diffAlocacao)}`
+                          : diffAlocacao < -0.01
+                            ? `Excede: ${formatBRL(Math.abs(diffAlocacao))}`
+                            : '100% alocado'}
+                      </span>
                     </div>
                   </div>
 

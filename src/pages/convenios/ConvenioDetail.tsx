@@ -196,19 +196,48 @@ export default function ConvenioDetail() {
     // Se houver planos_trabalho legados no banco, combina ou usa o valor dos projetos
     const totalPrevistoPlanos = planos.reduce((s, p) => s + (Number(p.valor_previsto) || 0), 0)
     const totalProjetos = convProjetos.reduce((s, p) => s + (Number(p.valor_total) || 0), 0)
-    const totalPrevisto = totalProjetos > 0 ? totalProjetos : totalPrevistoPlanos
+    // O total orçado nos projetos cadastrados vinculados ao instrumento
+    const totalOrcado = totalProjetos > 0 ? totalProjetos : totalPrevistoPlanos
+    const totalPrevisto = totalOrcado
 
     // O valor empenhado consolidado passa a ser calculado pela soma dos empenhos deste convênio
     const totalEmpenhado = empenhos.reduce((s, e) => s + (Number(e.valor) || 0), 0)
     const totalExecutadoPlanos = planos.reduce((s, p) => s + (Number(p.valor_executado) || 0), 0)
     const totalExecutado = totalEmpenhado > 0 ? totalEmpenhado : totalExecutadoPlanos
 
-    const percFinanceiro =
-      convenio?.valor_global && convenio.valor_global > 0
-        ? Math.min(100, Math.round((totalPrevisto / convenio.valor_global) * 100))
-        : totalPrevisto > 0
-          ? Math.min(100, Math.round((totalExecutado / totalPrevisto) * 100))
-          : 0
+    const valorGlobal = Number(convenio?.valor_global) || 0
+
+    // Percentual real de alocação orçamentária dos projetos em relação ao teto global do instrumento
+    const percAlocacaoExato = valorGlobal > 0 ? (totalOrcado / valorGlobal) * 100 : 0
+
+    // Se estiver exatamente em 100% (diferença absoluta menor que 0.01 centavo), exibe 100%.
+    // Se houver qualquer divergência real (ex: R$ 6.136,83 de saldo), nunca arredonda falsamente para 100%.
+    const diffGlobalOrcado = valorGlobal - totalOrcado
+    const isTotalmenteAlocado = Math.abs(diffGlobalOrcado) < 0.01 && valorGlobal > 0
+
+    let percAlocacaoFormatado: string
+    let percAlocacaoNumero: number
+    if (valorGlobal <= 0) {
+      percAlocacaoFormatado = '0%'
+      percAlocacaoNumero = 0
+    } else if (isTotalmenteAlocado) {
+      percAlocacaoFormatado = '100%'
+      percAlocacaoNumero = 100
+    } else if (percAlocacaoExato > 99.9 && percAlocacaoExato < 100) {
+      // Evita mostrar 100% quando na verdade é 99.92%
+      percAlocacaoFormatado = `${percAlocacaoExato.toFixed(1).replace('.', ',')}%`
+      percAlocacaoNumero = Number(percAlocacaoExato.toFixed(1))
+    } else if (percAlocacaoExato % 1 === 0) {
+      percAlocacaoFormatado = `${percAlocacaoExato.toFixed(0)}%`
+      percAlocacaoNumero = percAlocacaoExato
+    } else {
+      percAlocacaoFormatado = `${percAlocacaoExato.toFixed(1).replace('.', ',')}%`
+      percAlocacaoNumero = Number(percAlocacaoExato.toFixed(1))
+    }
+
+    // Progresso de execução financeira: quanto do orçado foi executado/empenhado
+    const percExecucao =
+      totalOrcado > 0 ? Math.min(100, Math.round((totalExecutado / totalOrcado) * 100)) : 0
 
     // Metas de todos os planos deste convênio
     const planoIds = new Set(planos.map((p) => p.id))
@@ -218,10 +247,17 @@ export default function ConvenioDetail() {
     return {
       convProjetos,
       totalProjetos,
+      totalOrcado,
       totalPrevisto,
       totalEmpenhado,
       totalExecutado,
-      percFinanceiro,
+      valorGlobal,
+      diffGlobalOrcado,
+      isTotalmenteAlocado,
+      percAlocacaoExato,
+      percAlocacaoFormatado,
+      percAlocacaoNumero,
+      percExecucao,
       totalMetas: convMetas.length,
       metasConcluidas,
     }
@@ -565,13 +601,27 @@ export default function ConvenioDetail() {
                 Orçado nos Projetos
               </span>
               <p className="text-base sm:text-lg xl:text-xl font-bold text-sky-700 mt-1.5 tabular-nums tracking-tight break-words leading-tight">
-                {formatBRL(consolidated.totalPrevisto)}
+                {formatBRL(consolidated.totalOrcado)}
               </p>
             </div>
-            <span className="text-[10px] sm:text-[11px] text-[#94A3B8] mt-2 block break-words">
-              Distribuído em {consolidated.convProjetos.length}{' '}
-              {consolidated.convProjetos.length === 1 ? 'projeto' : 'projetos'}
-            </span>
+            <div className="mt-2 text-[10px] sm:text-[11px] break-words">
+              {convenio.valor_global > 0 && Math.abs(consolidated.diffGlobalOrcado) >= 0.01 ? (
+                consolidated.diffGlobalOrcado > 0 ? (
+                  <span className="text-amber-700 font-medium">
+                    Saldo a alocar: {formatBRL(consolidated.diffGlobalOrcado)}
+                  </span>
+                ) : (
+                  <span className="text-red-700 font-medium">
+                    Excedente: {formatBRL(Math.abs(consolidated.diffGlobalOrcado))}
+                  </span>
+                )
+              ) : (
+                <span className="text-[#94A3B8]">
+                  Distribuído em {consolidated.convProjetos.length}{' '}
+                  {consolidated.convProjetos.length === 1 ? 'projeto' : 'projetos'}
+                </span>
+              )}
+            </div>
           </CardContent>
         </Card>
 
@@ -597,20 +647,26 @@ export default function ConvenioDetail() {
             <div>
               <div className="flex justify-between items-center mb-1 gap-2">
                 <span className="text-[11px] sm:text-xs font-semibold text-[#64748B] uppercase tracking-wide break-words">
-                  Progresso Geral
+                  Alocação do Recurso
                 </span>
                 <span className="text-xs sm:text-sm font-bold text-[#1FAF7A] shrink-0 tabular-nums">
-                  {consolidated.percFinanceiro}%
+                  {consolidated.percAlocacaoFormatado}
                 </span>
               </div>
-              <Progress value={consolidated.percFinanceiro} className="h-2.5 mt-2" />
+              <Progress
+                value={Math.min(100, Math.max(0, consolidated.percAlocacaoNumero))}
+                className="h-2.5 mt-2"
+              />
             </div>
             <div className="flex justify-between text-[10px] sm:text-[11px] text-[#94A3B8] mt-2 gap-2 flex-wrap">
               <span className="break-words">
-                Alocação:{' '}
                 {convenio.valor_global > 0
-                  ? `${Math.round((consolidated.totalPrevisto / convenio.valor_global) * 100)}% do teto`
-                  : 'Em execução'}
+                  ? consolidated.isTotalmenteAlocado
+                    ? '100% do teto alocado'
+                    : consolidated.diffGlobalOrcado > 0
+                      ? `Saldo: ${formatBRL(consolidated.diffGlobalOrcado)}`
+                      : `Excede: ${formatBRL(Math.abs(consolidated.diffGlobalOrcado))}`
+                  : 'Sem teto definido'}
               </span>
               <span className="shrink-0">{secretarias.length} pastas</span>
             </div>
@@ -1088,6 +1144,7 @@ export default function ConvenioDetail() {
           convenio={convenio}
           secretaria={selectedSecForRelatorio}
           planos={planos.filter((p) => p.secretaria_id === selectedSecForRelatorio.id)}
+          projetos={projetos.filter((p) => p.secretaria_id === selectedSecForRelatorio.id)}
           metas={metas.filter((m) => {
             const secPlanoIds = new Set(
               planos.filter((p) => p.secretaria_id === selectedSecForRelatorio.id).map((p) => p.id),
