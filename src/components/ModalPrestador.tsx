@@ -301,7 +301,7 @@ export function ModalPrestador({ open, onClose, onSuccess, prestadorToEdit }: Mo
                     id="cargoPJ"
                     value={cargo}
                     onChange={(e) => setCargo(e.target.value)}
-                    placeholder="Ex: Médico Clínico Geral, Enfermeiro"
+                    placeholder="Ex: Fisioterapeuta, Psicólogo, Fonoaudiólogo"
                     className={errors.cargo ? 'border-red-500' : ''}
                   />
                   {errors.cargo && <p className="text-xs text-red-500">{errors.cargo}</p>}
