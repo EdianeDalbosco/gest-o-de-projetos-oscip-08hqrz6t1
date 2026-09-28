@@ -25,6 +25,7 @@ import { formatBRL } from '@/components/StatusBadge'
 import { getPrestadoresColaboradores, deletePrestadorColaborador } from '@/services/api'
 import { useRealtime } from '@/hooks/use-realtime'
 import { ModalPrestador } from '@/components/ModalPrestador'
+import { ModalImportarPrestadores } from '@/components/ModalImportarPrestadores'
 import type { PrestadorColaboradorRecord, PrestadorTipo } from '@/types'
 
 export default function PrestadoresList() {
@@ -32,6 +33,7 @@ export default function PrestadoresList() {
   const [search, setSearch] = useState('')
   const [tipoFilter, setTipoFilter] = useState<string>('todos')
   const [modalOpen, setModalOpen] = useState(false)
+  const [modalImportarOpen, setModalImportarOpen] = useState(false)
   const [prestadorToEdit, setPrestadorToEdit] = useState<PrestadorColaboradorRecord | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -98,7 +100,15 @@ export default function PrestadoresList() {
             vinculados ao Termo de Parceria.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            onClick={() => setModalImportarOpen(true)}
+            className="text-xs sm:text-sm font-semibold border-emerald-300 text-emerald-800 hover:bg-emerald-50 bg-white shadow-sm"
+          >
+            <FileSpreadsheet className="w-4 h-4 mr-1.5 text-[#1FAF7A]" />
+            Importar Planilha
+          </Button>
           <Button
             onClick={() => {
               setPrestadorToEdit(null)
@@ -315,6 +325,14 @@ export default function PrestadoresList() {
         onClose={() => setModalOpen(false)}
         onSuccess={fetchData}
         prestadorToEdit={prestadorToEdit}
+      />
+
+      {/* Modal de Importação via Excel */}
+      <ModalImportarPrestadores
+        open={modalImportarOpen}
+        onClose={() => setModalImportarOpen(false)}
+        onSuccess={fetchData}
+        prestadoresExistentes={prestadores}
       />
     </div>
   )
