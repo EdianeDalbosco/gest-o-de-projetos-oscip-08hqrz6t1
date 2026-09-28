@@ -266,7 +266,8 @@ export function ModalPrestador({ open, onClose, onSuccess, prestadorToEdit }: Mo
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="profissional" className="text-xs font-semibold text-[#1E293B]">
-                    Profissional Designado / Sócio
+                    Representante Legal
+                    <br />
                   </Label>
                   <Input
                     id="profissional"
@@ -293,7 +294,8 @@ export function ModalPrestador({ open, onClose, onSuccess, prestadorToEdit }: Mo
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="cargoPJ" className="text-xs font-semibold text-[#1E293B]">
-                    Atividade / Cargo de Atuação *
+                    Profissional Designado
+                    <br />
                   </Label>
                   <Input
                     id="cargoPJ"
