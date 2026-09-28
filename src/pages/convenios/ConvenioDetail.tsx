@@ -419,16 +419,16 @@ export default function ConvenioDetail() {
                 <AlertCircle className="w-4 h-4" />
               </div>
               <div className="min-w-0">
-                <h3 className="text-sm font-bold text-[#1E293B] break-words">
+                <h3 className="text-xs sm:text-sm font-bold text-[#1E293B] break-words">
                   Painel de Alertas de Execução ({alertsData.totalAlertas})
                 </h3>
-                <p className="text-xs text-[#64748B] break-words">
+                <p className="text-[11px] sm:text-xs text-[#64748B] break-words leading-relaxed">
                   Existem metas com prazo expirado ou pendências financeiras vinculadas aos planos
                   deste instrumento.
                 </p>
               </div>
             </div>
-            <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-200/60 text-amber-900 border border-amber-300 self-start sm:self-auto shrink-0">
+            <span className="text-[10px] sm:text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-200/60 text-amber-900 border border-amber-300 self-start sm:self-auto shrink-0">
               Atenção Necessária
             </span>
           </div>
@@ -438,11 +438,11 @@ export default function ConvenioDetail() {
             {alertsData.metasAtrasadas.length > 0 && (
               <div className="bg-white rounded-lg border border-amber-200 p-3.5 space-y-2.5 shadow-xs overflow-hidden">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                  <span className="text-xs font-bold text-red-700 flex items-center gap-1.5">
+                  <span className="text-[11px] sm:text-xs font-bold text-red-700 flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5 text-red-500 shrink-0" />
                     Metas Atrasadas ({alertsData.metasAtrasadas.length})
                   </span>
-                  <span className="text-[10px] text-slate-500 uppercase font-semibold shrink-0">
+                  <span className="text-[9px] sm:text-[10px] text-slate-500 uppercase font-semibold shrink-0">
                     Prazo Vencido
                   </span>
                 </div>
@@ -455,16 +455,10 @@ export default function ConvenioDetail() {
                     >
                       <div className="flex items-start justify-between gap-2 min-w-0">
                         <div className="min-w-0 flex-1">
-                          <p
-                            className="font-bold text-[#1E293B] line-clamp-1 break-words"
-                            title={meta.descricao}
-                          >
+                          <p className="font-bold text-[11px] sm:text-xs text-[#1E293B] break-words leading-snug">
                             {meta.descricao}
                           </p>
-                          <p
-                            className="text-[11px] text-[#64748B] truncate"
-                            title={`${secretaria?.nome || 'Secretaria'} • ${plano?.titulo || 'Plano'}`}
-                          >
+                          <p className="text-[10px] sm:text-[11px] text-[#64748B] break-words mt-0.5 leading-snug">
                             {secretaria?.nome || 'Secretaria'} • {plano?.titulo || 'Plano'}
                           </p>
                         </div>
@@ -472,7 +466,7 @@ export default function ConvenioDetail() {
                           {perc}% realizado
                         </span>
                       </div>
-                      <div className="flex items-center justify-between text-[11px] text-slate-600 pt-1 border-t border-red-100/60 gap-2 flex-wrap">
+                      <div className="flex items-center justify-between text-[10px] sm:text-[11px] text-slate-600 pt-1 border-t border-red-100/60 gap-2 flex-wrap">
                         <span className="shrink-0">
                           Prazo:{' '}
                           <strong className="text-red-700">{formatDateBR(meta.prazo)}</strong>
@@ -491,11 +485,11 @@ export default function ConvenioDetail() {
             {alertsData.faturasVinculadas.length > 0 && (
               <div className="bg-white rounded-lg border border-amber-200 p-3.5 space-y-2.5 shadow-xs overflow-hidden">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                  <span className="text-xs font-bold text-amber-800 flex items-center gap-1.5">
+                  <span className="text-[11px] sm:text-xs font-bold text-amber-800 flex items-center gap-1.5">
                     <DollarSign className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                     Faturas Vinculadas ({alertsData.faturasVinculadas.length})
                   </span>
-                  <span className="text-[10px] text-slate-500 uppercase font-semibold shrink-0">
+                  <span className="text-[9px] sm:text-[10px] text-slate-500 uppercase font-semibold shrink-0">
                     Vencidas / Pendentes
                   </span>
                 </div>
@@ -509,26 +503,20 @@ export default function ConvenioDetail() {
                       <div className="flex items-start justify-between gap-2 min-w-0">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-mono font-bold text-[#1E293B]">
+                            <span className="font-mono font-bold text-[11px] sm:text-xs text-[#1E293B]">
                               {fatura.numero}
                             </span>
                             <StatusBadge status={fatura.status} />
                           </div>
-                          <p
-                            className="text-[11px] text-[#64748B] truncate mt-0.5"
-                            title={`${secretaria?.nome || 'Secretaria'} • ${itemTitulo}`}
-                          >
+                          <p className="text-[10px] sm:text-[11px] text-[#64748B] break-words mt-0.5 leading-snug">
                             {secretaria?.nome || 'Secretaria'} • {itemTitulo}
                           </p>
                         </div>
-                        <span
-                          className="font-bold text-[#1E293B] tabular-nums shrink-0 text-right text-xs break-all"
-                          title={formatBRL(fatura.valor)}
-                        >
+                        <span className="font-bold text-[#1E293B] tabular-nums shrink-0 text-right text-[11px] sm:text-xs break-all">
                           {formatBRL(fatura.valor)}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between text-[11px] text-slate-600 pt-1 border-t border-slate-200 gap-2 flex-wrap">
+                      <div className="flex items-center justify-between text-[10px] sm:text-[11px] text-slate-600 pt-1 border-t border-slate-200 gap-2 flex-wrap">
                         <span className="shrink-0">
                           Vencimento:{' '}
                           <strong
@@ -539,7 +527,7 @@ export default function ConvenioDetail() {
                             {formatDateBR(fatura.data_vencimento)}
                           </strong>
                         </span>
-                        <span className="text-[#64748B] truncate max-w-[150px]">
+                        <span className="text-[#64748B] break-words">
                           {fatura.forma_pagamento || 'Fatura vinculada'}
                         </span>
                       </div>
@@ -555,34 +543,32 @@ export default function ConvenioDetail() {
       {/* Cards Consolidados: Valor Global, Previsto, Executado e Barra Geral */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="border-[#E2E8F0] min-w-0 overflow-hidden">
-          <CardContent className="p-5 min-w-0">
-            <span className="text-xs font-semibold text-[#64748B] uppercase block truncate">
-              Valor Global do Instrumento
-            </span>
-            <p
-              className="text-xl sm:text-2xl font-bold text-[#1E293B] mt-2 tabular-nums truncate tracking-tight"
-              title={formatBRL(convenio.valor_global)}
-            >
-              {formatBRL(convenio.valor_global)}
-            </p>
-            <span className="text-[11px] text-[#94A3B8] mt-1 block truncate">
+          <CardContent className="p-4 sm:p-5 min-w-0 flex flex-col justify-between h-full">
+            <div>
+              <span className="text-[11px] sm:text-xs font-semibold text-[#64748B] uppercase block tracking-wide break-words">
+                Valor Global do Instrumento
+              </span>
+              <p className="text-base sm:text-lg xl:text-xl font-bold text-[#1E293B] mt-1.5 tabular-nums tracking-tight break-words leading-tight">
+                {formatBRL(convenio.valor_global)}
+              </p>
+            </div>
+            <span className="text-[10px] sm:text-[11px] text-[#94A3B8] mt-2 block break-words">
               Teto pactuado no instrumento
             </span>
           </CardContent>
         </Card>
 
         <Card className="border-[#E2E8F0] min-w-0 overflow-hidden">
-          <CardContent className="p-5 min-w-0">
-            <span className="text-xs font-semibold text-[#64748B] uppercase block truncate">
-              Orçado nos Projetos
-            </span>
-            <p
-              className="text-xl sm:text-2xl font-bold text-sky-700 mt-2 tabular-nums truncate tracking-tight"
-              title={formatBRL(consolidated.totalPrevisto)}
-            >
-              {formatBRL(consolidated.totalPrevisto)}
-            </p>
-            <span className="text-[11px] text-[#94A3B8] mt-1 block truncate">
+          <CardContent className="p-4 sm:p-5 min-w-0 flex flex-col justify-between h-full">
+            <div>
+              <span className="text-[11px] sm:text-xs font-semibold text-[#64748B] uppercase block tracking-wide break-words">
+                Orçado nos Projetos
+              </span>
+              <p className="text-base sm:text-lg xl:text-xl font-bold text-sky-700 mt-1.5 tabular-nums tracking-tight break-words leading-tight">
+                {formatBRL(consolidated.totalPrevisto)}
+              </p>
+            </div>
+            <span className="text-[10px] sm:text-[11px] text-[#94A3B8] mt-2 block break-words">
               Distribuído em {consolidated.convProjetos.length}{' '}
               {consolidated.convProjetos.length === 1 ? 'projeto' : 'projetos'}
             </span>
@@ -590,17 +576,16 @@ export default function ConvenioDetail() {
         </Card>
 
         <Card className="border-[#E2E8F0] min-w-0 overflow-hidden">
-          <CardContent className="p-5 min-w-0">
-            <span className="text-xs font-semibold text-[#64748B] uppercase block truncate">
-              Total Empenhado
-            </span>
-            <p
-              className="text-xl sm:text-2xl font-bold text-emerald-700 mt-2 tabular-nums truncate tracking-tight"
-              title={formatBRL(consolidated.totalEmpenhado)}
-            >
-              {formatBRL(consolidated.totalEmpenhado)}
-            </p>
-            <span className="text-[11px] text-[#94A3B8] mt-1 block truncate">
+          <CardContent className="p-4 sm:p-5 min-w-0 flex flex-col justify-between h-full">
+            <div>
+              <span className="text-[11px] sm:text-xs font-semibold text-[#64748B] uppercase block tracking-wide break-words">
+                Total Empenhado
+              </span>
+              <p className="text-base sm:text-lg xl:text-xl font-bold text-emerald-700 mt-1.5 tabular-nums tracking-tight break-words leading-tight">
+                {formatBRL(consolidated.totalEmpenhado)}
+              </p>
+            </div>
+            <span className="text-[10px] sm:text-[11px] text-[#94A3B8] mt-2 block break-words">
               {empenhos.length}{' '}
               {empenhos.length === 1 ? 'empenho registrado' : 'empenhos registrados'}
             </span>
@@ -608,18 +593,20 @@ export default function ConvenioDetail() {
         </Card>
 
         <Card className="border-[#E2E8F0] min-w-0 overflow-hidden">
-          <CardContent className="p-5 min-w-0">
-            <div className="flex justify-between items-center mb-1 gap-2">
-              <span className="text-xs font-semibold text-[#64748B] uppercase truncate">
-                Progresso Geral
-              </span>
-              <span className="text-xs font-bold text-[#1FAF7A] shrink-0">
-                {consolidated.percFinanceiro}%
-              </span>
+          <CardContent className="p-4 sm:p-5 min-w-0 flex flex-col justify-between h-full">
+            <div>
+              <div className="flex justify-between items-center mb-1 gap-2">
+                <span className="text-[11px] sm:text-xs font-semibold text-[#64748B] uppercase tracking-wide break-words">
+                  Progresso Geral
+                </span>
+                <span className="text-xs sm:text-sm font-bold text-[#1FAF7A] shrink-0 tabular-nums">
+                  {consolidated.percFinanceiro}%
+                </span>
+              </div>
+              <Progress value={consolidated.percFinanceiro} className="h-2.5 mt-2" />
             </div>
-            <Progress value={consolidated.percFinanceiro} className="h-2.5 mt-2" />
-            <div className="flex justify-between text-[11px] text-[#94A3B8] mt-2 gap-2">
-              <span className="truncate">
+            <div className="flex justify-between text-[10px] sm:text-[11px] text-[#94A3B8] mt-2 gap-2 flex-wrap">
+              <span className="break-words">
                 Alocação:{' '}
                 {convenio.valor_global > 0
                   ? `${Math.round((consolidated.totalPrevisto / convenio.valor_global) * 100)}% do teto`
@@ -745,10 +732,7 @@ export default function ConvenioDetail() {
                         </p>
                       )}
                       {sec.observacoes && (
-                        <p
-                          className="text-xs text-[#64748B] line-clamp-1 mt-1 break-words"
-                          title={sec.observacoes}
-                        >
+                        <p className="text-xs text-[#64748B] mt-1 break-words leading-relaxed">
                           {sec.observacoes}
                         </p>
                       )}
@@ -757,58 +741,49 @@ export default function ConvenioDetail() {
 
                   {/* Métricas Consolidadas da Secretaria e Ações */}
                   <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5 xl:shrink-0 flex-wrap justify-between xl:justify-end min-w-0">
-                    <div className="grid grid-cols-2 sm:flex sm:items-center gap-3 sm:gap-5 shrink-0">
+                    <div className="grid grid-cols-2 sm:flex sm:items-center gap-3 sm:gap-4 shrink-0">
                       <div className="text-left sm:text-right min-w-0">
-                        <span className="text-[10px] uppercase font-bold text-[#94A3B8] block truncate">
+                        <span className="text-[9px] sm:text-[10px] uppercase font-bold text-[#94A3B8] block break-words">
                           Previsto
                         </span>
-                        <span
-                          className="text-xs font-bold text-[#1E293B] tabular-nums block truncate"
-                          title={formatBRL(secPrevisto)}
-                        >
+                        <span className="text-[11px] sm:text-xs font-bold text-[#1E293B] tabular-nums block break-words leading-tight">
                           {formatBRL(secPrevisto)}
                         </span>
                       </div>
 
                       <div className="text-left sm:text-right min-w-0">
-                        <span className="text-[10px] uppercase font-bold text-[#94A3B8] block truncate">
+                        <span className="text-[9px] sm:text-[10px] uppercase font-bold text-[#94A3B8] block break-words">
                           Empenhado
                         </span>
-                        <span
-                          className="text-xs font-bold text-sky-700 tabular-nums block truncate"
-                          title={formatBRL(secEmpenhado)}
-                        >
+                        <span className="text-[11px] sm:text-xs font-bold text-sky-700 tabular-nums block break-words leading-tight">
                           {formatBRL(secEmpenhado)}
                         </span>
                       </div>
 
                       <div className="text-left sm:text-right min-w-0">
-                        <span className="text-[10px] uppercase font-bold text-[#94A3B8] block truncate">
+                        <span className="text-[9px] sm:text-[10px] uppercase font-bold text-[#94A3B8] block break-words">
                           Executado
                         </span>
-                        <span
-                          className="text-xs font-bold text-emerald-700 tabular-nums block truncate"
-                          title={`${formatBRL(secExecutado)} (${secPerc}%)`}
-                        >
+                        <span className="text-[11px] sm:text-xs font-bold text-emerald-700 tabular-nums block break-words leading-tight">
                           {formatBRL(secExecutado)} ({secPerc}%)
                         </span>
                       </div>
 
                       <div className="text-left sm:text-right min-w-0">
-                        <span className="text-[10px] uppercase font-bold text-[#94A3B8] block truncate">
+                        <span className="text-[9px] sm:text-[10px] uppercase font-bold text-[#94A3B8] block break-words">
                           Metas
                         </span>
-                        <span className="text-xs font-bold text-[#1E293B] block truncate">
+                        <span className="text-[11px] sm:text-xs font-bold text-[#1E293B] block break-words leading-tight">
                           {secMetasConcluidas}/{secMetas.length} concluídas
                         </span>
                       </div>
 
                       {secAtividades.length > 0 && (
                         <div className="text-left sm:text-right min-w-0 col-span-2 sm:col-span-1">
-                          <span className="text-[10px] uppercase font-bold text-[#94A3B8] block truncate">
+                          <span className="text-[9px] sm:text-[10px] uppercase font-bold text-[#94A3B8] block break-words">
                             Atividades
                           </span>
-                          <span className="text-xs font-bold text-[#1FAF7A] block truncate">
+                          <span className="text-[11px] sm:text-xs font-bold text-[#1FAF7A] block break-words leading-tight">
                             {secAtividades.length} prestador(es)
                           </span>
                         </div>
@@ -1019,16 +994,13 @@ export default function ConvenioDetail() {
                               <div className="flex items-start justify-between gap-2 min-w-0">
                                 <div className="min-w-0 flex-1">
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    <h5
-                                      className="font-bold text-sm text-[#1E293B] truncate"
-                                      title={proj.nome || proj.titulo}
-                                    >
+                                    <h5 className="font-bold text-xs sm:text-sm text-[#1E293B] break-words leading-snug">
                                       {proj.nome || proj.titulo}
                                     </h5>
                                     <StatusBadge status={proj.status} />
                                   </div>
                                   {proj.descricao && (
-                                    <p className="text-xs text-[#64748B] line-clamp-2 mt-1 leading-relaxed break-words">
+                                    <p className="text-[11px] sm:text-xs text-[#64748B] mt-1 leading-relaxed break-words">
                                       {proj.descricao}
                                     </p>
                                   )}
@@ -1048,22 +1020,19 @@ export default function ConvenioDetail() {
 
                               <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-[#64748B] gap-2 flex-wrap">
                                 <div className="min-w-0">
-                                  <span className="text-[10px] uppercase font-bold text-[#94A3B8] block truncate">
+                                  <span className="text-[9px] sm:text-[10px] uppercase font-bold text-[#94A3B8] block break-words">
                                     Orçamento Total
                                   </span>
-                                  <span
-                                    className="font-bold text-[#1E293B] tabular-nums block truncate"
-                                    title={formatBRL(proj.valor_total || 0)}
-                                  >
+                                  <span className="text-[11px] sm:text-xs font-bold text-[#1E293B] tabular-nums block break-words leading-tight">
                                     {formatBRL(proj.valor_total || 0)}
                                   </span>
                                 </div>
                                 {proj.data_fim && (
                                   <div className="text-right min-w-0">
-                                    <span className="text-[10px] uppercase font-bold text-[#94A3B8] block truncate">
+                                    <span className="text-[9px] sm:text-[10px] uppercase font-bold text-[#94A3B8] block break-words">
                                       Término Previsto
                                     </span>
-                                    <span className="font-medium text-[#475569] block truncate">
+                                    <span className="text-[11px] sm:text-xs font-medium text-[#475569] block break-words leading-tight">
                                       {formatDateBR(proj.data_fim)}
                                     </span>
                                   </div>
