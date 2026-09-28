@@ -492,9 +492,7 @@ export default function Index() {
       <Card className="border-[#E2E8F0] shadow-sm">
         <CardHeader className="pb-3 flex flex-row items-center justify-between">
           <div>
-            <CardTitle className="text-base font-bold text-[#1E293B]">
-              Projetos Sociais Ativos
-            </CardTitle>
+            <CardTitle className="text-base font-bold text-[#1E293B]">Projetos Ativos</CardTitle>
             <CardDescription className="text-xs text-[#64748B]">
               Acompanhamento de escopo, orçamento e execução
             </CardDescription>
