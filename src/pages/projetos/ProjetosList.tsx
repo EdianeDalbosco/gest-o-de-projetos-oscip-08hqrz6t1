@@ -13,6 +13,9 @@ import {
   LayoutGrid,
   List,
   Table as TableIcon,
+  Download,
+  Printer,
+  Loader2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -26,6 +29,8 @@ import {
 import { StatusBadge, formatBRL, formatDateBR } from '@/components/StatusBadge'
 import { ModalProjeto } from '@/components/ModalProjeto'
 import { getProjetos, deleteProjeto } from '@/services/api'
+import { exportarProjetosPdf, imprimirProjetos } from '@/services/exportProjetos'
+import { toast } from '@/hooks/use-toast'
 import { useRealtime } from '@/hooks/use-realtime'
 import type { ProjetoRecord } from '@/types'
 
@@ -57,6 +62,8 @@ export default function ProjetosList() {
   const [defaultSecretariaId, setDefaultSecretariaId] = useState<string | undefined>(undefined)
   const [defaultConvenioId, setDefaultConvenioId] = useState<string | undefined>(undefined)
   const [loading, setLoading] = useState(true)
+  const [exportingPdf, setExportingPdf] = useState(false)
+  const [printing, setPrinting] = useState(false)
 
   const fetchProjetos = async () => {
     try {
@@ -195,6 +202,73 @@ export default function ProjetosList() {
     }
   }
 
+  const handleExportPdf = async () => {
+    if (filteredProjetos.length === 0) {
+      toast({
+        title: 'Nenhum projeto para exportar',
+        description: 'Ajuste os filtros para selecionar projetos antes de gerar o PDF.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    try {
+      setExportingPdf(true)
+      // Permite que o estado de loading renderize antes do processamento síncrono do jsPDF
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      exportarProjetosPdf({
+        projetos: filteredProjetos,
+        filtroBusca: search,
+        filtroStatus: statusFilter,
+      })
+      toast({
+        title: 'PDF gerado com sucesso',
+        description: `Exportados ${filteredProjetos.length} ${
+          filteredProjetos.length === 1 ? 'projeto' : 'projetos'
+        }. O download iniciará automaticamente.`,
+      })
+    } catch (err) {
+      console.error('Erro ao gerar PDF:', err)
+      toast({
+        title: 'Erro ao gerar PDF',
+        description: 'Não foi possível gerar o arquivo PDF. Tente novamente.',
+        variant: 'destructive',
+      })
+    } finally {
+      setExportingPdf(false)
+    }
+  }
+
+  const handlePrint = () => {
+    if (filteredProjetos.length === 0) {
+      toast({
+        title: 'Nenhum projeto para imprimir',
+        description: 'Ajuste os filtros para selecionar projetos antes de imprimir.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    try {
+      setPrinting(true)
+      imprimirProjetos({
+        projetos: filteredProjetos,
+        filtroBusca: search,
+        filtroStatus: statusFilter,
+      })
+    } catch (err) {
+      console.error('Erro ao abrir diálogo de impressão:', err)
+      toast({
+        title: 'Erro ao abrir impressão',
+        description:
+          'Não foi possível abrir o diálogo de impressão. Verifique o bloqueador de pop-ups.',
+        variant: 'destructive',
+      })
+    } finally {
+      setTimeout(() => setPrinting(false), 500)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Top Header & Actions */}
@@ -247,49 +321,91 @@ export default function ProjetosList() {
           </div>
         </div>
 
-        {/* View Mode Switcher */}
-        <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg self-start sm:self-auto border border-slate-200/80">
-          <button
-            type="button"
-            onClick={() => handleViewModeChange('cards')}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-              viewMode === 'cards'
-                ? 'bg-[#1FAF7A] text-white shadow-xs'
-                : 'text-[#64748B] hover:text-[#1E293B] hover:bg-white/60'
-            }`}
-            title="Visualização em Grade de Quadros (Cards)"
-          >
-            <LayoutGrid className="w-3.5 h-3.5" />
-            <span>Quadros</span>
-          </button>
+        {/* Actions: Export PDF, Print & View Mode Switcher */}
+        <div className="flex flex-wrap items-center gap-2 self-start lg:self-auto">
+          {/* Botões de Exportar e Imprimir */}
+          <div className="flex items-center gap-1.5">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleExportPdf}
+              disabled={exportingPdf || loading}
+              className="h-9 px-2.5 sm:px-3 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-white border-slate-200 hover:bg-slate-50 shadow-xs gap-1.5"
+              title="Exportar listagem atual para arquivo PDF (A4)"
+            >
+              {exportingPdf ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-500" />
+              ) : (
+                <Download className="w-3.5 h-3.5 text-slate-600" />
+              )}
+              <span className="hidden sm:inline">Exportar PDF</span>
+              <span className="sm:hidden">PDF</span>
+            </Button>
 
-          <button
-            type="button"
-            onClick={() => handleViewModeChange('lista')}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-              viewMode === 'lista'
-                ? 'bg-[#1FAF7A] text-white shadow-xs'
-                : 'text-[#64748B] hover:text-[#1E293B] hover:bg-white/60'
-            }`}
-            title="Visualização em Linhas Compactas (Lista)"
-          >
-            <List className="w-3.5 h-3.5" />
-            <span>Lista</span>
-          </button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handlePrint}
+              disabled={printing || loading}
+              className="h-9 px-2.5 sm:px-3 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-white border-slate-200 hover:bg-slate-50 shadow-xs gap-1.5"
+              title="Imprimir listagem atual ou salvar como PDF pelo navegador"
+            >
+              {printing ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-500" />
+              ) : (
+                <Printer className="w-3.5 h-3.5 text-slate-600" />
+              )}
+              <span className="hidden sm:inline">Imprimir</span>
+              <span className="sm:hidden">Imprimir</span>
+            </Button>
+          </div>
 
-          <button
-            type="button"
-            onClick={() => handleViewModeChange('planilha')}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-              viewMode === 'planilha'
-                ? 'bg-[#1FAF7A] text-white shadow-xs'
-                : 'text-[#64748B] hover:text-[#1E293B] hover:bg-white/60'
-            }`}
-            title="Visualização Completa em Planilha (Tabela)"
-          >
-            <TableIcon className="w-3.5 h-3.5" />
-            <span>Planilha</span>
-          </button>
+          {/* View Mode Switcher */}
+          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg border border-slate-200/80">
+            <button
+              type="button"
+              onClick={() => handleViewModeChange('cards')}
+              className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                viewMode === 'cards'
+                  ? 'bg-[#1FAF7A] text-white shadow-xs'
+                  : 'text-[#64748B] hover:text-[#1E293B] hover:bg-white/60'
+              }`}
+              title="Visualização em Grade de Quadros (Cards)"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Quadros</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleViewModeChange('lista')}
+              className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                viewMode === 'lista'
+                  ? 'bg-[#1FAF7A] text-white shadow-xs'
+                  : 'text-[#64748B] hover:text-[#1E293B] hover:bg-white/60'
+              }`}
+              title="Visualização em Linhas Compactas (Lista)"
+            >
+              <List className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Lista</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleViewModeChange('planilha')}
+              className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                viewMode === 'planilha'
+                  ? 'bg-[#1FAF7A] text-white shadow-xs'
+                  : 'text-[#64748B] hover:text-[#1E293B] hover:bg-white/60'
+              }`}
+              title="Visualização Completa em Planilha (Tabela)"
+            >
+              <TableIcon className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Planilha</span>
+            </button>
+          </div>
         </div>
       </div>
 
