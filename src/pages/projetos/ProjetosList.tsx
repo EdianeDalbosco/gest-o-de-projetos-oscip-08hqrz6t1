@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import {
   FolderKanban,
   Plus,
@@ -29,11 +29,16 @@ import { useRealtime } from '@/hooks/use-realtime'
 import type { ProjetoRecord, ProjetoStatus } from '@/types'
 
 export default function ProjetosList() {
+  const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
+
   const [projetos, setProjetos] = useState<ProjetoRecord[]>([])
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('todos')
   const [modalOpen, setModalOpen] = useState(false)
   const [editingProjeto, setEditingProjeto] = useState<ProjetoRecord | null>(null)
+  const [defaultSecretariaId, setDefaultSecretariaId] = useState<string | undefined>(undefined)
+  const [defaultConvenioId, setDefaultConvenioId] = useState<string | undefined>(undefined)
   const [loading, setLoading] = useState(true)
 
   const fetchProjetos = async () => {
@@ -53,6 +58,8 @@ export default function ProjetosList() {
     // Listen to topbar trigger event
     const handleOpenModal = () => {
       setEditingProjeto(null)
+      setDefaultSecretariaId(undefined)
+      setDefaultConvenioId(undefined)
       setModalOpen(true)
     }
     window.addEventListener('open-modal-novo-projeto', handleOpenModal)
@@ -60,6 +67,32 @@ export default function ProjetosList() {
       window.removeEventListener('open-modal-novo-projeto', handleOpenModal)
     }
   }, [])
+
+  // Suporte a abertura automática via navegação externa (state ou query params)
+  useEffect(() => {
+    const state = location.state as
+      | { openModal?: boolean; secretariaId?: string; convenioId?: string }
+      | undefined
+    const queryNovo = searchParams.get('novo') === 'true'
+    const querySec = searchParams.get('secretaria_id') || undefined
+    const queryConv = searchParams.get('convenio_id') || undefined
+
+    if (state?.openModal || queryNovo) {
+      setEditingProjeto(null)
+      setDefaultSecretariaId(state?.secretariaId || querySec)
+      setDefaultConvenioId(state?.convenioId || queryConv)
+      setModalOpen(true)
+
+      // Limpa searchParams se existirem para não reabrir em refresh acidental
+      if (queryNovo) {
+        const nextParams = new URLSearchParams(searchParams)
+        nextParams.delete('novo')
+        nextParams.delete('secretaria_id')
+        nextParams.delete('convenio_id')
+        setSearchParams(nextParams, { replace: true })
+      }
+    }
+  }, [location.state, searchParams, setSearchParams])
 
   useRealtime('projetos', () => fetchProjetos())
 
@@ -271,9 +304,15 @@ export default function ProjetosList() {
       {/* Creation/Edit Modal */}
       <ModalProjeto
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => {
+          setModalOpen(false)
+          setDefaultSecretariaId(undefined)
+          setDefaultConvenioId(undefined)
+        }}
         onSuccess={fetchProjetos}
         projetoToEdit={editingProjeto}
+        defaultSecretariaId={defaultSecretariaId}
+        defaultConvenioId={defaultConvenioId}
       />
     </div>
   )

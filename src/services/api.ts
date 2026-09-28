@@ -22,6 +22,20 @@ export async function getProjetos(): Promise<ProjetoRecord[]> {
   })
 }
 
+export async function getProjetosByConvenio(convenioId: string): Promise<ProjetoRecord[]> {
+  return pb.collection('projetos').getFullList<ProjetoRecord>({
+    filter: `convenio_id = "${convenioId}"`,
+    sort: '-created',
+  })
+}
+
+export async function getProjetosBySecretaria(secretariaId: string): Promise<ProjetoRecord[]> {
+  return pb.collection('projetos').getFullList<ProjetoRecord>({
+    filter: `secretaria_id = "${secretariaId}"`,
+    sort: '-created',
+  })
+}
+
 export async function getProjetoById(id: string): Promise<ProjetoRecord> {
   return pb.collection('projetos').getOne<ProjetoRecord>(id)
 }
