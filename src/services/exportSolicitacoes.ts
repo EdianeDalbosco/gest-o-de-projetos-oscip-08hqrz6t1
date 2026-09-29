@@ -31,6 +31,7 @@ export interface ExportSolicitacoesOptions {
   filtroPrioridade?: string
   filtroTipo?: string
   filtroProjeto?: string
+  filtroResponsavel?: string
   orgConfig?: OrganizacaoConfigRecord | null
 }
 
@@ -66,6 +67,7 @@ export function exportarSolicitacoesPdf({
   filtroPrioridade,
   filtroTipo,
   filtroProjeto,
+  filtroResponsavel,
   orgConfig,
 }: ExportSolicitacoesOptions): void {
   const doc = new jsPDF({
@@ -209,6 +211,13 @@ export function exportarSolicitacoesPdf({
         filtrosDesc.push(`Prioridade: ${filtroPrioridade}`)
       if (filtroTipo && filtroTipo !== 'todos') filtrosDesc.push(`Tipo: ${filtroTipo}`)
       if (filtroProjeto && filtroProjeto !== 'todos') filtrosDesc.push(`Projeto: ${filtroProjeto}`)
+      if (filtroResponsavel && filtroResponsavel !== 'todos') {
+        filtrosDesc.push(
+          filtroResponsavel === 'sem_responsavel'
+            ? 'Sem responsável'
+            : `Resp: ${filtroResponsavel}`,
+        )
+      }
 
       if (filtrosDesc.length > 0) {
         doc.setFontSize(7.5)
@@ -249,6 +258,7 @@ export function imprimirSolicitacoes({
   filtroPrioridade,
   filtroTipo,
   filtroProjeto,
+  filtroResponsavel,
   orgConfig,
 }: ExportSolicitacoesOptions): void {
   const razaoSocial = orgConfig?.nome_organizacao || DADOS_CONTRATANTE.razaoSocial
@@ -269,6 +279,13 @@ export function imprimirSolicitacoes({
   if (filtroTipo && filtroTipo !== 'todos') filtrosDesc.push(`Tipo: ${escapeHtml(filtroTipo)}`)
   if (filtroProjeto && filtroProjeto !== 'todos')
     filtrosDesc.push(`Projeto: ${escapeHtml(filtroProjeto)}`)
+  if (filtroResponsavel && filtroResponsavel !== 'todos') {
+    filtrosDesc.push(
+      filtroResponsavel === 'sem_responsavel'
+        ? 'Sem responsável'
+        : `Resp: ${escapeHtml(filtroResponsavel)}`,
+    )
+  }
 
   const linhasHtml = solicitacoes
     .map((s) => {

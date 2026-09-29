@@ -27,6 +27,7 @@ import {
   updateSolicitacao,
   deleteSolicitacao,
   getOrganizacaoConfig,
+  getUsers,
 } from '@/services/api'
 import { exportarSolicitacoesPdf, imprimirSolicitacoes } from '@/services/exportSolicitacoes'
 import { ModalSolicitacao } from '@/components/ModalSolicitacao'
@@ -37,6 +38,7 @@ import type {
   SolicitacaoTipo,
   ProjetoRecord,
   OrganizacaoConfigRecord,
+  UserRecord,
 } from '@/types'
 import {
   Plus,
@@ -122,6 +124,7 @@ export default function SolicitacoesList() {
 
   const [solicitacoes, setSolicitacoes] = useState<SolicitacaoRecord[]>([])
   const [projetos, setProjetos] = useState<ProjetoRecord[]>([])
+  const [usuarios, setUsuarios] = useState<UserRecord[]>([])
   const [orgConfig, setOrgConfig] = useState<OrganizacaoConfigRecord | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -136,6 +139,7 @@ export default function SolicitacoesList() {
   const [filtroPrioridade, setFiltroPrioridade] = useState<string>('todas')
   const [filtroTipo, setFiltroTipo] = useState<string>('todos')
   const [filtroProjeto, setFiltroProjeto] = useState<string>('todos')
+  const [filtroResponsavel, setFiltroResponsavel] = useState<string>('todos')
 
   // Modais
   const [modalOpen, setModalOpen] = useState(false)
@@ -159,14 +163,16 @@ export default function SolicitacoesList() {
   const fetchData = async () => {
     try {
       setLoading(true)
-      const [sList, pList, cfg] = await Promise.all([
+      const [sList, pList, cfg, uList] = await Promise.all([
         getSolicitacoes(),
         getProjetos(),
         getOrganizacaoConfig(),
+        getUsers().catch(() => []),
       ])
       setSolicitacoes(sList)
       setProjetos(pList)
       setOrgConfig(cfg)
+      setUsuarios(uList)
     } catch {
       toast({
         title: 'Erro ao carregar dados',
@@ -183,6 +189,22 @@ export default function SolicitacoesList() {
     localStorage.setItem('solicitacoes_view_mode', mode)
   }
 
+  // Mapa de ID -> Nome de usuário para normalizar registros antigos que tenham id salvo
+  const userMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const u of usuarios) {
+      if (u.id) {
+        map.set(u.id, u.name || u.email || u.id)
+      }
+    }
+    return map
+  }, [usuarios])
+
+  const getNomeResponsavel = (resp?: string): string => {
+    if (!resp) return ''
+    return userMap.get(resp) || resp
+  }
+
   const isAtrasada = (s: SolicitacaoRecord): boolean => {
     if (!s.prazo || s.status === 'Concluída' || s.status === 'Cancelada') return false
     const hoje = new Date()
@@ -190,6 +212,18 @@ export default function SolicitacoesList() {
     const dt = new Date(s.prazo)
     return dt < hoje
   }
+
+  // Lista dinâmica de responsáveis existentes nas solicitações (normalizados)
+  const responsaveisDisponiveis = useMemo(() => {
+    const set = new Set<string>()
+    for (const s of solicitacoes) {
+      const nome = getNomeResponsavel(s.responsavel)
+      if (nome.trim()) {
+        set.add(nome.trim())
+      }
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b))
+  }, [solicitacoes, userMap])
 
   // Filtragem e ordenação (Urgentes e atrasadas primeiro)
   const filteredSolicitacoes = useMemo(() => {
@@ -204,10 +238,21 @@ export default function SolicitacoesList() {
         if (filtroProjeto !== 'geral' && s.projeto !== filtroProjeto) return false
       }
 
+      const nomeResp = getNomeResponsavel(s.responsavel)
+
+      if (filtroResponsavel !== 'todos') {
+        if (filtroResponsavel === 'sem_responsavel') {
+          if (nomeResp.trim()) return false
+        } else if (nomeResp.toLowerCase() !== filtroResponsavel.toLowerCase()) {
+          return false
+        }
+      }
+
       if (q) {
         const matchesTitulo = s.titulo.toLowerCase().includes(q)
         const matchesDesc = (s.descricao || '').toLowerCase().includes(q)
-        const matchesResp = (s.responsavel || '').toLowerCase().includes(q)
+        const matchesResp =
+          (s.responsavel || '').toLowerCase().includes(q) || nomeResp.toLowerCase().includes(q)
         const matchesSolicitante = (s.solicitante || '').toLowerCase().includes(q)
         const matchesProj = (s.expand?.projeto?.nome || '').toLowerCase().includes(q)
         if (!matchesTitulo && !matchesDesc && !matchesResp && !matchesSolicitante && !matchesProj)
@@ -250,7 +295,16 @@ export default function SolicitacoesList() {
 
       return new Date(b.created).getTime() - new Date(a.created).getTime()
     })
-  }, [solicitacoes, busca, filtroStatus, filtroPrioridade, filtroTipo, filtroProjeto])
+  }, [
+    solicitacoes,
+    busca,
+    filtroStatus,
+    filtroPrioridade,
+    filtroTipo,
+    filtroProjeto,
+    filtroResponsavel,
+    userMap,
+  ])
 
   // KPIs
   const totalAbertas = useMemo(() => {
@@ -535,12 +589,16 @@ export default function SolicitacoesList() {
             size="sm"
             onClick={() =>
               exportarSolicitacoesPdf({
-                solicitacoes: filteredSolicitacoes,
+                solicitacoes: filteredSolicitacoes.map((s) => ({
+                  ...s,
+                  responsavel: getNomeResponsavel(s.responsavel),
+                })),
                 filtroBusca: busca,
                 filtroStatus,
                 filtroPrioridade,
                 filtroTipo,
                 filtroProjeto,
+                filtroResponsavel,
                 orgConfig,
               })
             }
@@ -555,12 +613,16 @@ export default function SolicitacoesList() {
             size="sm"
             onClick={() =>
               imprimirSolicitacoes({
-                solicitacoes: filteredSolicitacoes,
+                solicitacoes: filteredSolicitacoes.map((s) => ({
+                  ...s,
+                  responsavel: getNomeResponsavel(s.responsavel),
+                })),
                 filtroBusca: busca,
                 filtroStatus,
                 filtroPrioridade,
                 filtroTipo,
                 filtroProjeto,
+                filtroResponsavel,
                 orgConfig,
               })
             }
@@ -662,9 +724,9 @@ export default function SolicitacoesList() {
 
       {/* Barra de Filtros e Busca */}
       <div className="bg-white p-4 rounded-xl border border-[#E2E8F0] shadow-sm space-y-3">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {/* Busca textual */}
-          <div className="md:col-span-4 relative">
+          <div className="sm:col-span-2 md:col-span-3 lg:col-span-2 relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
             <Input
               placeholder="Buscar por título, descrição, responsável..."
@@ -675,7 +737,7 @@ export default function SolicitacoesList() {
           </div>
 
           {/* Filtro Status */}
-          <div className="md:col-span-2">
+          <div className="col-span-1">
             <Select value={filtroStatus} onValueChange={setFiltroStatus}>
               <SelectTrigger className="text-xs border-[#CBD5E1]">
                 <SelectValue placeholder="Status: Todos" />
@@ -693,7 +755,7 @@ export default function SolicitacoesList() {
           </div>
 
           {/* Filtro Prioridade */}
-          <div className="md:col-span-2">
+          <div className="col-span-1">
             <Select value={filtroPrioridade} onValueChange={setFiltroPrioridade}>
               <SelectTrigger className="text-xs border-[#CBD5E1]">
                 <SelectValue placeholder="Prioridade: Todas" />
@@ -709,7 +771,7 @@ export default function SolicitacoesList() {
           </div>
 
           {/* Filtro Tipo */}
-          <div className="md:col-span-2">
+          <div className="col-span-1">
             <Select value={filtroTipo} onValueChange={setFiltroTipo}>
               <SelectTrigger className="text-xs border-[#CBD5E1]">
                 <SelectValue placeholder="Tipo: Todos" />
@@ -726,7 +788,7 @@ export default function SolicitacoesList() {
           </div>
 
           {/* Filtro Projeto */}
-          <div className="md:col-span-2">
+          <div className="col-span-1">
             <Select value={filtroProjeto} onValueChange={setFiltroProjeto}>
               <SelectTrigger className="text-xs border-[#CBD5E1]">
                 <SelectValue placeholder="Projeto: Todos" />
@@ -737,6 +799,24 @@ export default function SolicitacoesList() {
                 {projetos.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
                     {p.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Filtro Responsável (Dinâmico a partir dos registros existentes) */}
+          <div className="col-span-1">
+            <Select value={filtroResponsavel} onValueChange={setFiltroResponsavel}>
+              <SelectTrigger className="text-xs border-[#CBD5E1]">
+                <SelectValue placeholder="Responsável: Todos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Responsável: Todos</SelectItem>
+                <SelectItem value="sem_responsavel">Não atribuído</SelectItem>
+                {responsaveisDisponiveis.map((resp) => (
+                  <SelectItem key={resp} value={resp}>
+                    {resp}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -845,7 +925,7 @@ export default function SolicitacoesList() {
                             {getStatusBadge(s.status)}
                           </td>
                           <td className="py-3 px-3 text-[#475569] font-medium whitespace-nowrap">
-                            {s.responsavel || '—'}
+                            {getNomeResponsavel(s.responsavel) || '—'}
                           </td>
                           <td className="py-3 px-3 text-[#475569]">
                             {s.expand?.projeto ? (
@@ -1083,8 +1163,14 @@ export default function SolicitacoesList() {
 
                           {/* Rodapé do card: Prazo & Responsável */}
                           <div className="mt-2 pt-1.5 flex items-center justify-between text-[10px] text-[#64748B]">
-                            <span className="truncate font-medium">
-                              Resp: {item.responsavel ? item.responsavel.split(' ')[0] : '—'}
+                            <span
+                              className="truncate font-medium"
+                              title={getNomeResponsavel(item.responsavel) || undefined}
+                            >
+                              Resp:{' '}
+                              {item.responsavel
+                                ? getNomeResponsavel(item.responsavel).split(' ')[0]
+                                : '—'}
                             </span>
 
                             {item.prazo && (
@@ -1183,7 +1269,7 @@ export default function SolicitacoesList() {
                 <div>
                   <span className="text-[10px] text-[#64748B] block">Responsável</span>
                   <span className="font-medium text-[#1E293B]">
-                    {viewingSolicitacao.responsavel || '—'}
+                    {getNomeResponsavel(viewingSolicitacao.responsavel) || '—'}
                   </span>
                 </div>
                 <div>

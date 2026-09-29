@@ -326,10 +326,20 @@ export function ModalSolicitacao({
                 className="text-xs border-[#CBD5E1] focus-visible:ring-[#1FAF7A]"
               />
               <datalist id="lista-solicitantes">
-                {user?.name && <option value={user.name} />}
-                {usuarios.map((u) => (
-                  <option key={u.id} value={u.name || u.email} />
-                ))}
+                {user?.name && (
+                  <option
+                    value={user.name}
+                    label={`${user.name}${user.cargo ? ` (${user.cargo})` : ''}`}
+                  />
+                )}
+                {usuarios.map((u) => {
+                  const labelParts = [u.name || u.email]
+                  if (u.cargo) labelParts.push(`(${u.cargo})`)
+                  else if (u.equipe) labelParts.push(`- ${u.equipe}`)
+                  return (
+                    <option key={u.id} value={u.name || u.email} label={labelParts.join(' ')} />
+                  )
+                })}
               </datalist>
             </div>
 
@@ -362,9 +372,20 @@ export function ModalSolicitacao({
                 className="text-xs border-[#CBD5E1] focus-visible:ring-[#1FAF7A]"
               />
               <datalist id="lista-responsaveis">
-                {usuarios.map((u) => (
-                  <option key={u.id} value={u.name || u.email} />
-                ))}
+                {user?.name && (
+                  <option
+                    value={user.name}
+                    label={`${user.name}${user.cargo ? ` (${user.cargo})` : ''}`}
+                  />
+                )}
+                {usuarios.map((u) => {
+                  const labelParts = [u.name || u.email]
+                  if (u.cargo) labelParts.push(`(${u.cargo})`)
+                  else if (u.equipe) labelParts.push(`- ${u.equipe}`)
+                  return (
+                    <option key={u.id} value={u.name || u.email} label={labelParts.join(' ')} />
+                  )
+                })}
               </datalist>
             </div>
 
