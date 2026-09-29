@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-29T19:33:06.597Z",
+  "generatedAt": "2026-09-29T19:49:57.246Z",
   "collections": [
     {
       "name": "users",
@@ -1515,13 +1515,33 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "solicitante",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "data_solicitacao",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "anexo",
+          "type": "file",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [
         "CREATE INDEX idx_solicitacoes_status ON solicitacoes (status)",
         "CREATE INDEX idx_solicitacoes_prioridade ON solicitacoes (prioridade)",
         "CREATE INDEX idx_solicitacoes_projeto ON solicitacoes (projeto)",
-        "CREATE INDEX idx_solicitacoes_prazo ON solicitacoes (prazo)"
+        "CREATE INDEX idx_solicitacoes_prazo ON solicitacoes (prazo)",
+        "CREATE INDEX `idx_solicitacoes_solicitante` ON `solicitacoes` (solicitante)",
+        "CREATE INDEX `idx_solicitacoes_data_solicitacao` ON `solicitacoes` (data_solicitacao)"
       ]
     }
   ]

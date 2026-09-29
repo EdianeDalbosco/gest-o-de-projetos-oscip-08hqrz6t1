@@ -19,7 +19,13 @@ import {
 } from '@/components/ui/select'
 import { toast } from '@/hooks/use-toast'
 import { useAuth } from '@/context/AuthContext'
-import { createSolicitacao, updateSolicitacao, getProjetos, getSecretarias } from '@/services/api'
+import {
+  createSolicitacao,
+  updateSolicitacao,
+  getProjetos,
+  getSecretarias,
+  getUsers,
+} from '@/services/api'
 import type {
   SolicitacaoRecord,
   SolicitacaoTipo,
@@ -27,8 +33,9 @@ import type {
   SolicitacaoStatus,
   ProjetoRecord,
   SecretariaRecord,
+  UserRecord,
 } from '@/types'
-import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { Loader2, AlertCircle, CheckCircle2, FileUp, FileText, X, Download } from 'lucide-react'
 
 interface ModalSolicitacaoProps {
   open: boolean
@@ -50,52 +57,80 @@ export function ModalSolicitacao({
   const [loading, setLoading] = useState(false)
   const [projetos, setProjetos] = useState<ProjetoRecord[]>([])
   const [secretarias, setSecretarias] = useState<SecretariaRecord[]>([])
+  const [usuarios, setUsuarios] = useState<UserRecord[]>([])
 
   const [titulo, setTitulo] = useState('')
   const [descricao, setDescricao] = useState('')
   const [tipo, setTipo] = useState<SolicitacaoTipo>('Solicitação')
   const [prioridade, setPrioridade] = useState<SolicitacaoPrioridade>('Média')
   const [status, setStatus] = useState<SolicitacaoStatus>('Aberta')
+  const [solicitante, setSolicitante] = useState('')
+  const [dataSolicitacao, setDataSolicitacao] = useState('')
   const [responsavel, setResponsavel] = useState('')
   const [prazo, setPrazo] = useState('')
   const [projetoId, setProjetoId] = useState<string>('none')
   const [secretariaId, setSecretariaId] = useState<string>('none')
   const [conclusao, setConclusao] = useState('')
 
+  // Anexo
+  const [arquivoAnexo, setArquivoAnexo] = useState<File | null>(null)
+  const [anexoAtual, setAnexoAtual] = useState<string | null>(null)
+  const [removerAnexo, setRemoverAnexo] = useState(false)
+
   useEffect(() => {
     if (open) {
       loadDependencies()
+      const hoje = new Date().toISOString().split('T')[0]
       if (solicitacaoToEdit) {
         setTitulo(solicitacaoToEdit.titulo || '')
         setDescricao(solicitacaoToEdit.descricao || '')
         setTipo(solicitacaoToEdit.tipo || 'Solicitação')
         setPrioridade(solicitacaoToEdit.prioridade || 'Média')
         setStatus(solicitacaoToEdit.status || 'Aberta')
+        setSolicitante(solicitacaoToEdit.solicitante || '')
+        setDataSolicitacao(
+          solicitacaoToEdit.data_solicitacao
+            ? solicitacaoToEdit.data_solicitacao.split('T')[0]
+            : solicitacaoToEdit.created
+              ? solicitacaoToEdit.created.split(' ')[0]
+              : hoje,
+        )
         setResponsavel(solicitacaoToEdit.responsavel || '')
         setPrazo(solicitacaoToEdit.prazo ? solicitacaoToEdit.prazo.split('T')[0] : '')
         setProjetoId(solicitacaoToEdit.projeto || 'none')
         setSecretariaId(solicitacaoToEdit.secretaria || 'none')
         setConclusao(solicitacaoToEdit.conclusao || '')
+        setAnexoAtual(solicitacaoToEdit.anexo || null)
       } else {
         setTitulo('')
         setDescricao('')
         setTipo('Solicitação')
         setPrioridade('Média')
         setStatus('Aberta')
-        setResponsavel(user?.name || '')
+        setSolicitante(user?.name || '')
+        setDataSolicitacao(hoje)
+        setResponsavel('')
         setPrazo('')
         setProjetoId(defaultProjetoId || 'none')
         setSecretariaId('none')
         setConclusao('')
+        setAnexoAtual(null)
       }
+      setArquivoAnexo(null)
+      setRemoverAnexo(false)
     }
   }, [open, solicitacaoToEdit, defaultProjetoId, user])
 
   const loadDependencies = async () => {
     try {
-      const [pList, sList] = await Promise.all([getProjetos(), getSecretarias()])
+      const [pList, sList, uList] = await Promise.all([
+        getProjetos(),
+        getSecretarias(),
+        getUsers().catch(() => []),
+      ])
       setProjetos(pList)
       setSecretarias(sList)
+      setUsuarios(uList)
     } catch {
       // Ignora erro se não conseguir carregar listas no modal
     }
@@ -136,28 +171,48 @@ export function ModalSolicitacao({
     setLoading(true)
 
     try {
-      const payload: Partial<SolicitacaoRecord> = {
-        titulo: titulo.trim(),
-        descricao: descricao.trim(),
-        tipo,
-        prioridade,
-        status,
-        responsavel: responsavel.trim(),
-        prazo: prazo ? new Date(prazo + 'T12:00:00.000Z').toISOString() : undefined,
-        projeto: projetoId !== 'none' ? projetoId : undefined,
-        secretaria: secretariaId !== 'none' ? secretariaId : undefined,
-        conclusao: conclusao.trim(),
-        criado_por: solicitacaoToEdit?.criado_por || user?.name || user?.email || 'Administrador',
+      // Usamos FormData para suportar upload de arquivo de maneira idêntica aos outros módulos
+      const formData = new FormData()
+      formData.append('titulo', titulo.trim())
+      formData.append('descricao', descricao.trim())
+      formData.append('tipo', tipo)
+      formData.append('prioridade', prioridade)
+      formData.append('status', status)
+      formData.append('solicitante', solicitante.trim())
+      if (dataSolicitacao) {
+        formData.append(
+          'data_solicitacao',
+          new Date(dataSolicitacao + 'T12:00:00.000Z').toISOString(),
+        )
+      }
+      formData.append('responsavel', responsavel.trim())
+      if (prazo) {
+        formData.append('prazo', new Date(prazo + 'T12:00:00.000Z').toISOString())
+      } else {
+        formData.append('prazo', '')
+      }
+      formData.append('projeto', projetoId !== 'none' ? projetoId : '')
+      formData.append('secretaria', secretariaId !== 'none' ? secretariaId : '')
+      formData.append('conclusao', conclusao.trim())
+      formData.append(
+        'criado_por',
+        solicitacaoToEdit?.criado_por || user?.name || user?.email || 'Administrador',
+      )
+
+      if (arquivoAnexo) {
+        formData.append('anexo', arquivoAnexo)
+      } else if (removerAnexo && solicitacaoToEdit) {
+        formData.append('anexo', '')
       }
 
       if (solicitacaoToEdit) {
-        await updateSolicitacao(solicitacaoToEdit.id, payload)
+        await updateSolicitacao(solicitacaoToEdit.id, formData)
         toast({
           title: 'Solicitação atualizada',
           description: 'Os dados foram atualizados com sucesso.',
         })
       } else {
-        await createSolicitacao(payload)
+        await createSolicitacao(formData)
         toast({
           title: 'Solicitação criada',
           description: 'Novo item cadastrado com sucesso.',
@@ -256,6 +311,42 @@ export function ModalSolicitacao({
             </div>
           </div>
 
+          {/* Grid: Solicitante e Data da Solicitação */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="solicitante" className="text-xs font-semibold text-[#1E293B]">
+                Solicitante
+              </Label>
+              <Input
+                id="solicitante"
+                list="lista-solicitantes"
+                placeholder="Nome do solicitante (ex: Ediane Dalbosco, Sec. Saúde...)"
+                value={solicitante}
+                onChange={(e) => setSolicitante(e.target.value)}
+                className="text-xs border-[#CBD5E1] focus-visible:ring-[#1FAF7A]"
+              />
+              <datalist id="lista-solicitantes">
+                {user?.name && <option value={user.name} />}
+                {usuarios.map((u) => (
+                  <option key={u.id} value={u.name || u.email} />
+                ))}
+              </datalist>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="dataSolicitacao" className="text-xs font-semibold text-[#1E293B]">
+                Data da Solicitação
+              </Label>
+              <Input
+                id="dataSolicitacao"
+                type="date"
+                value={dataSolicitacao}
+                onChange={(e) => setDataSolicitacao(e.target.value)}
+                className="text-xs border-[#CBD5E1] focus-visible:ring-[#1FAF7A]"
+              />
+            </div>
+          </div>
+
           {/* Grid: Responsável e Prazo */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
@@ -264,11 +355,17 @@ export function ModalSolicitacao({
               </Label>
               <Input
                 id="responsavel"
+                list="lista-responsaveis"
                 placeholder="Ex: Dra. Camila ou Depto Financeiro"
                 value={responsavel}
                 onChange={(e) => setResponsavel(e.target.value)}
                 className="text-xs border-[#CBD5E1] focus-visible:ring-[#1FAF7A]"
               />
+              <datalist id="lista-responsaveis">
+                {usuarios.map((u) => (
+                  <option key={u.id} value={u.name || u.email} />
+                ))}
+              </datalist>
             </div>
 
             <div className="space-y-1.5">
@@ -335,6 +432,95 @@ export function ModalSolicitacao({
               onChange={(e) => setDescricao(e.target.value)}
               className="text-xs border-[#CBD5E1] focus-visible:ring-[#1FAF7A]"
             />
+          </div>
+
+          {/* Upload de Anexo (PDF, Imagem, Planilha, Documento) */}
+          <div className="space-y-2 p-3 rounded-lg border border-dashed border-[#CBD5E1] bg-slate-50/70">
+            <Label className="text-xs font-semibold text-[#1E293B] flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <FileUp className="w-4 h-4 text-[#1FAF7A]" />
+                Anexo da Solicitação
+              </span>
+              <span className="text-[11px] font-normal text-[#64748B]">
+                PDF, Imagens, Planilhas, DOCX (até 10MB)
+              </span>
+            </Label>
+
+            <Input
+              type="file"
+              accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.xls,.xlsx,.csv,.txt"
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (f) {
+                  if (f.size > 10 * 1024 * 1024) {
+                    toast({
+                      title: 'Arquivo muito grande',
+                      description: 'O tamanho máximo permitido para o anexo é de 10MB.',
+                      variant: 'destructive',
+                    })
+                    e.target.value = ''
+                    return
+                  }
+                  setArquivoAnexo(f)
+                  setRemoverAnexo(false)
+                }
+              }}
+              className="text-xs h-9 bg-white cursor-pointer"
+            />
+
+            {arquivoAnexo ? (
+              <div className="flex items-center justify-between text-xs bg-emerald-50 text-emerald-800 p-2 rounded border border-emerald-200">
+                <span className="truncate flex items-center gap-1.5 font-medium">
+                  <FileText className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  {arquivoAnexo.name} ({(arquivoAnexo.size / 1024).toFixed(0)} KB)
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setArquivoAnexo(null)}
+                  className="text-red-500 hover:text-red-700 p-0.5"
+                  title="Remover anexo selecionado"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : anexoAtual && !removerAnexo ? (
+              <div className="flex items-center justify-between text-xs bg-white text-[#334155] p-2 rounded border border-[#E2E8F0]">
+                <a
+                  href={`/api/files/solicitacoes/${solicitacaoToEdit?.id}/${anexoAtual}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="truncate flex items-center gap-1.5 text-[#1FAF7A] hover:underline font-medium"
+                >
+                  <FileText className="w-3.5 h-3.5 text-[#1FAF7A] shrink-0" />
+                  <span className="truncate">{anexoAtual}</span>
+                  <Download className="w-3 h-3 shrink-0 ml-1" />
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setRemoverAnexo(true)}
+                  className="text-rose-600 hover:text-rose-800 text-[11px] font-semibold flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-rose-50"
+                  title="Excluir anexo salvo"
+                >
+                  <X className="w-3 h-3" />
+                  Remover
+                </button>
+              </div>
+            ) : removerAnexo ? (
+              <div className="flex items-center justify-between text-xs bg-rose-50 text-rose-700 p-2 rounded border border-rose-200">
+                <span>O anexo atual será removido ao salvar.</span>
+                <button
+                  type="button"
+                  onClick={() => setRemoverAnexo(false)}
+                  className="text-xs text-[#1FAF7A] font-semibold hover:underline"
+                >
+                  Desfazer
+                </button>
+              </div>
+            ) : (
+              <p className="text-[11px] text-[#94A3B8]">
+                Nenhum arquivo anexado a esta solicitação no momento.
+              </p>
+            )}
           </div>
 
           {/* Campo de Conclusão / Providência (obrigatório se Concluída) */}

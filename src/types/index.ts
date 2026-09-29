@@ -357,6 +357,9 @@ export interface SolicitacaoRecord extends RecordModel {
   tipo: SolicitacaoTipo
   prioridade: SolicitacaoPrioridade
   status: SolicitacaoStatus
+  solicitante?: string
+  data_solicitacao?: string
+  anexo?: string
   responsavel?: string
   prazo?: string
   projeto?: string

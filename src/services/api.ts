@@ -523,7 +523,7 @@ export async function getSolicitacaoById(id: string): Promise<SolicitacaoRecord>
 }
 
 export async function createSolicitacao(
-  data: Partial<SolicitacaoRecord>,
+  data: Partial<SolicitacaoRecord> | FormData,
 ): Promise<SolicitacaoRecord> {
   return pb.collection('solicitacoes').create<SolicitacaoRecord>(data, {
     expand: 'projeto,secretaria',
@@ -532,7 +532,7 @@ export async function createSolicitacao(
 
 export async function updateSolicitacao(
   id: string,
-  data: Partial<SolicitacaoRecord>,
+  data: Partial<SolicitacaoRecord> | FormData,
 ): Promise<SolicitacaoRecord> {
   return pb.collection('solicitacoes').update<SolicitacaoRecord>(id, data, {
     expand: 'projeto,secretaria',

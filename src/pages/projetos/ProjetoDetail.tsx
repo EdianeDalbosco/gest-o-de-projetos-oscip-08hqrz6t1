@@ -711,11 +711,13 @@ export default function ProjetoDetail() {
                     <thead>
                       <tr className="border-b border-[#E2E8F0] bg-slate-50 text-[#64748B] font-semibold">
                         <th className="py-3 px-4">Título</th>
+                        <th className="py-3 px-3">Solicitante</th>
                         <th className="py-3 px-3">Tipo</th>
                         <th className="py-3 px-3">Prioridade</th>
                         <th className="py-3 px-3">Status</th>
                         <th className="py-3 px-3">Responsável</th>
                         <th className="py-3 px-3">Prazo</th>
+                        <th className="py-3 px-3 text-center">Anexo</th>
                         <th className="py-3 px-4 text-right">Ação</th>
                       </tr>
                     </thead>
@@ -739,6 +741,9 @@ export default function ProjetoDetail() {
                                   {s.descricao}
                                 </span>
                               )}
+                            </td>
+                            <td className="py-3 px-3 text-[#475569] whitespace-nowrap">
+                              {s.solicitante || '—'}
                             </td>
                             <td className="py-3 px-3">
                               <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700">
@@ -776,13 +781,28 @@ export default function ProjetoDetail() {
                               {s.prazo ? (
                                 <span
                                   className={
-                                    atrasada ? 'text-rose-600 font-bold' : 'text-[#64748B]'
+                                    atrasada ? 'text-rose-600 font-bold' : 'text-[#475569]'
                                   }
                                 >
                                   {formatDateBR(s.prazo)} {atrasada && '(Atrasada)'}
                                 </span>
                               ) : (
                                 <span className="text-[#94A3B8]">—</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-3 text-center whitespace-nowrap">
+                              {s.anexo ? (
+                                <a
+                                  href={`/api/files/solicitacoes/${s.id}/${s.anexo}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-[#1FAF7A] hover:underline font-medium text-[11px] inline-flex items-center gap-1"
+                                  title={`Baixar anexo: ${s.anexo}`}
+                                >
+                                  Baixar
+                                </a>
+                              ) : (
+                                <span className="text-[#CBD5E1]">—</span>
                               )}
                             </td>
                             <td className="py-3 px-4 text-right">
@@ -798,7 +818,7 @@ export default function ProjetoDetail() {
                               >
                                 <Edit2 className="w-3.5 h-3.5" />
                               </Button>
-                            </td>
+                            </td>{' '}
                           </tr>
                         )
                       })}

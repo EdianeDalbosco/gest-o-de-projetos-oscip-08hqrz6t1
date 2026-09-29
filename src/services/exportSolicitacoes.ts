@@ -87,18 +87,38 @@ export function exportarSolicitacoesPdf({
     const desc = s.descricao ? `\n${s.descricao}` : ''
     const tituloCell = `${titulo}${desc}`
 
+    const solicitanteCell = s.solicitante || '—'
+    const dataSol = s.data_solicitacao
+      ? formatDateBR(s.data_solicitacao)
+      : s.created
+        ? formatDateBR(s.created)
+        : '—'
+
     const projNome = s.expand?.projeto?.nome || 'Geral / Não vinculado'
     const secNome = s.expand?.secretaria?.nome ? `\nSec: ${s.expand.secretaria.nome}` : ''
     const projetoCell = `${projNome}${secNome}`
 
     const atrasada = isAtrasada(s)
     const prazoStr = s.prazo ? formatDateBR(s.prazo) : 'Sem prazo'
-    const prazoCell = atrasada ? `${prazoStr} (ATRASADA)` : prazoStr
+    const prazoCell = atrasada ? `${prazoStr}\n(ATRASADA)` : prazoStr
 
     const respCell = s.responsavel || 'Não atribuído'
+    const anexoCell = s.anexo ? 'Sim' : 'Não'
     const concCell = s.conclusao || '—'
 
-    return [tituloCell, s.tipo, s.prioridade, s.status, respCell, projetoCell, prazoCell, concCell]
+    return [
+      tituloCell,
+      solicitanteCell,
+      dataSol,
+      s.tipo,
+      s.prioridade,
+      s.status,
+      respCell,
+      projetoCell,
+      prazoCell,
+      anexoCell,
+      concCell,
+    ]
   })
 
   applyAutoTable(doc, {
@@ -106,20 +126,23 @@ export function exportarSolicitacoesPdf({
     head: [
       [
         'Título & Descrição',
+        'Solicitante',
+        'Data Sol.',
         'Tipo',
         'Prioridade',
         'Status',
         'Responsável',
         'Projeto / Secretaria',
         'Prazo',
+        'Anexo',
         'Conclusão / Providência',
       ],
     ],
     body: tableRows,
     theme: 'grid',
     styles: {
-      fontSize: 8,
-      cellPadding: 2,
+      fontSize: 7.5,
+      cellPadding: 1.8,
       textColor: [30, 41, 59],
       lineColor: [203, 213, 225],
       lineWidth: 0.2,
@@ -131,20 +154,23 @@ export function exportarSolicitacoesPdf({
       fontStyle: 'bold',
       lineColor: [148, 163, 184],
       lineWidth: 0.3,
-      fontSize: 8,
+      fontSize: 7.5,
     },
     alternateRowStyles: {
       fillColor: [255, 255, 255],
     },
     columnStyles: {
-      0: { cellWidth: 65, halign: 'left' },
-      1: { cellWidth: 26, halign: 'center' },
-      2: { cellWidth: 20, halign: 'center' },
-      3: { cellWidth: 25, halign: 'center' },
-      4: { cellWidth: 32, halign: 'left' },
-      5: { cellWidth: 42, halign: 'left' },
-      6: { cellWidth: 25, halign: 'center' },
-      7: { cellWidth: 34, halign: 'left' },
+      0: { cellWidth: 50, halign: 'left' },
+      1: { cellWidth: 26, halign: 'left' },
+      2: { cellWidth: 18, halign: 'center' },
+      3: { cellWidth: 22, halign: 'center' },
+      4: { cellWidth: 17, halign: 'center' },
+      5: { cellWidth: 22, halign: 'center' },
+      6: { cellWidth: 26, halign: 'left' },
+      7: { cellWidth: 32, halign: 'left' },
+      8: { cellWidth: 20, halign: 'center' },
+      9: { cellWidth: 13, halign: 'center' },
+      10: { cellWidth: 23, halign: 'left' },
     },
     margin: { top: 38, bottom: 18, left: 14, right: 14 },
     didDrawPage: (data) => {
@@ -247,11 +273,19 @@ export function imprimirSolicitacoes({
   const linhasHtml = solicitacoes
     .map((s) => {
       const atrasada = isAtrasada(s)
+      const dtSol = s.data_solicitacao
+        ? formatDateBR(s.data_solicitacao)
+        : s.created
+          ? formatDateBR(s.created)
+          : '—'
       const prazoStr = s.prazo ? formatDateBR(s.prazo) : '—'
       const projNome = escapeHtml(s.expand?.projeto?.nome || 'Geral / Não vinculado')
       const secNome = s.expand?.secretaria?.nome
         ? `<div class="sub">Sec: ${escapeHtml(s.expand.secretaria.nome)}</div>`
         : ''
+      const anexoBadge = s.anexo
+        ? `<span class="badge badge-anexo">Sim (1)</span>`
+        : `<span class="badge-none">—</span>`
 
       return `
         <tr>
@@ -259,6 +293,8 @@ export function imprimirSolicitacoes({
             <div class="title">${escapeHtml(s.titulo)}</div>
             ${s.descricao ? `<div class="desc">${escapeHtml(s.descricao)}</div>` : ''}
           </td>
+          <td>${escapeHtml(s.solicitante || '—')}</td>
+          <td class="col-center">${dtSol}</td>
           <td class="col-center"><span class="badge badge-tipo">${escapeHtml(s.tipo)}</span></td>
           <td class="col-center"><span class="badge badge-${s.prioridade.toLowerCase()}">${escapeHtml(s.prioridade)}</span></td>
           <td class="col-center"><span class="badge badge-status">${escapeHtml(s.status)}</span></td>
@@ -270,6 +306,7 @@ export function imprimirSolicitacoes({
           <td class="col-center ${atrasada ? 'prazo-atrasado' : ''}">
             ${prazoStr} ${atrasada ? '<br><small>(Atrasado)</small>' : ''}
           </td>
+          <td class="col-center">${anexoBadge}</td>
           <td class="col-conc">${escapeHtml(s.conclusao || '—')}</td>
         </tr>
       `
@@ -347,6 +384,8 @@ export function imprimirSolicitacoes({
     .badge-alta { background: #FFFBEB; color: #92400E; border-color: #FDE68A; }
     .badge-média, .badge-media { background: #EFF6FF; color: #1E40AF; border-color: #BFDBFE; }
     .badge-baixa { background: #F1F5F9; color: #475569; }
+    .badge-anexo { background: #ECFDF5; color: #065F46; border-color: #A7F3D0; font-weight: 700; }
+    .badge-none { color: #94A3B8; }
     .footer {
       border-top: 1px solid #E2E8F0;
       padding-top: 8px;
@@ -375,18 +414,21 @@ export function imprimirSolicitacoes({
   <table>
     <thead>
       <tr>
-        <th style="width: 25%;">Título & Descrição</th>
-        <th style="width: 10%; text-align: center;">Tipo</th>
-        <th style="width: 8%; text-align: center;">Prioridade</th>
-        <th style="width: 10%; text-align: center;">Status</th>
-        <th style="width: 12%;">Responsável</th>
-        <th style="width: 15%;">Projeto / Secretaria</th>
-        <th style="width: 8%; text-align: center;">Prazo</th>
-        <th style="width: 12%;">Conclusão</th>
+        <th style="width: 20%;">Título & Descrição</th>
+        <th style="width: 10%;">Solicitante</th>
+        <th style="width: 7%; text-align: center;">Data Sol.</th>
+        <th style="width: 8%; text-align: center;">Tipo</th>
+        <th style="width: 6%; text-align: center;">Prioridade</th>
+        <th style="width: 8%; text-align: center;">Status</th>
+        <th style="width: 10%;">Responsável</th>
+        <th style="width: 13%;">Projeto / Secretaria</th>
+        <th style="width: 6%; text-align: center;">Prazo</th>
+        <th style="width: 4%; text-align: center;">Anexo</th>
+        <th style="width: 8%;">Conclusão</th>
       </tr>
     </thead>
     <tbody>
-      ${linhasHtml || '<tr><td colspan="8" style="text-align:center; padding:20px; color:#64748B;">Nenhum registro encontrado para os filtros selecionados.</td></tr>'}
+      ${linhasHtml || '<tr><td colspan="11" style="text-align:center; padding:20px; color:#64748B;">Nenhum registro encontrado para os filtros selecionados.</td></tr>'}
     </tbody>
   </table>
 

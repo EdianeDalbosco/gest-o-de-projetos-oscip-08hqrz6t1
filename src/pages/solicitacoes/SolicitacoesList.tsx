@@ -59,6 +59,10 @@ import {
   Check,
   X,
   AlertTriangle,
+  Paperclip,
+  Download,
+  Eye,
+  User,
 } from 'lucide-react'
 
 const KANBAN_COLUMNS: {
@@ -136,6 +140,8 @@ export default function SolicitacoesList() {
   // Modais
   const [modalOpen, setModalOpen] = useState(false)
   const [editingSolicitacao, setEditingSolicitacao] = useState<SolicitacaoRecord | null>(null)
+  const [detalheModalOpen, setDetalheModalOpen] = useState(false)
+  const [viewingSolicitacao, setViewingSolicitacao] = useState<SolicitacaoRecord | null>(null)
 
   // Modal rápido de conclusão ao arrastar ou clicar em "Concluir"
   const [concluirModalOpen, setConcluirModalOpen] = useState(false)
@@ -202,8 +208,10 @@ export default function SolicitacoesList() {
         const matchesTitulo = s.titulo.toLowerCase().includes(q)
         const matchesDesc = (s.descricao || '').toLowerCase().includes(q)
         const matchesResp = (s.responsavel || '').toLowerCase().includes(q)
+        const matchesSolicitante = (s.solicitante || '').toLowerCase().includes(q)
         const matchesProj = (s.expand?.projeto?.nome || '').toLowerCase().includes(q)
-        if (!matchesTitulo && !matchesDesc && !matchesResp && !matchesProj) return false
+        if (!matchesTitulo && !matchesDesc && !matchesResp && !matchesSolicitante && !matchesProj)
+          return false
       }
 
       return true
@@ -775,18 +783,21 @@ export default function SolicitacoesList() {
                   <thead>
                     <tr className="border-b border-[#E2E8F0] bg-slate-50 text-[#64748B] font-semibold">
                       <th className="py-3 px-4">Título & Descrição</th>
+                      <th className="py-3 px-3">Solicitante</th>
                       <th className="py-3 px-3">Tipo</th>
                       <th className="py-3 px-3">Prioridade</th>
                       <th className="py-3 px-3">Status</th>
                       <th className="py-3 px-3">Responsável</th>
                       <th className="py-3 px-3">Projeto / Secretaria</th>
-                      <th className="py-3 px-3">Prazo</th>
+                      <th className="py-3 px-3">Data / Prazo</th>
+                      <th className="py-3 px-3 text-center">Anexo</th>
                       <th className="py-3 px-4 text-right">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#F1F5F9]">
                     {filteredSolicitacoes.map((s) => {
                       const atrasada = isAtrasada(s)
+                      const dtSol = s.data_solicitacao || s.created
                       return (
                         <tr
                           key={s.id}
@@ -795,6 +806,9 @@ export default function SolicitacoesList() {
                             if (canEdit) {
                               setEditingSolicitacao(s)
                               setModalOpen(true)
+                            } else {
+                              setViewingSolicitacao(s)
+                              setDetalheModalOpen(true)
                             }
                           }}
                         >
@@ -811,6 +825,16 @@ export default function SolicitacoesList() {
                               <div className="mt-1.5 p-1.5 rounded bg-emerald-50 text-[10px] text-emerald-800 border border-emerald-200">
                                 <span className="font-semibold">Providência:</span> {s.conclusao}
                               </div>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            {s.solicitante ? (
+                              <div className="flex items-center gap-1.5 text-[#1E293B] font-medium">
+                                <User className="w-3 h-3 text-[#94A3B8]" />
+                                <span>{s.solicitante}</span>
+                              </div>
+                            ) : (
+                              <span className="text-[#94A3B8]">—</span>
                             )}
                           </td>
                           <td className="py-3 px-3 whitespace-nowrap">{getTipoBadge(s.tipo)}</td>
@@ -840,23 +864,45 @@ export default function SolicitacoesList() {
                             )}
                           </td>
                           <td className="py-3 px-3 whitespace-nowrap">
-                            {s.prazo ? (
-                              <div className="flex flex-col">
+                            <div className="flex flex-col">
+                              {dtSol && (
+                                <span className="text-[11px] text-[#64748B]">
+                                  Sol: {formatDateBR(dtSol)}
+                                </span>
+                              )}
+                              {s.prazo ? (
                                 <span
                                   className={`font-semibold ${
                                     atrasada ? 'text-rose-600 font-bold' : 'text-[#475569]'
                                   }`}
                                 >
-                                  {formatDateBR(s.prazo)}
+                                  Prazo: {formatDateBR(s.prazo)}
+                                  {atrasada && (
+                                    <span className="block text-[10px] font-bold text-rose-600">
+                                      Em atraso
+                                    </span>
+                                  )}
                                 </span>
-                                {atrasada && (
-                                  <span className="text-[10px] font-bold text-rose-600">
-                                    Em atraso
-                                  </span>
-                                )}
-                              </div>
+                              ) : (
+                                <span className="text-[10px] text-[#94A3B8]">Sem prazo</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3 px-3 text-center whitespace-nowrap">
+                            {s.anexo ? (
+                              <a
+                                href={`/api/files/solicitacoes/${s.id}/${s.anexo}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded bg-emerald-50 text-[#1FAF7A] hover:bg-emerald-100 hover:text-emerald-800 font-medium text-[11px] transition-colors border border-emerald-200"
+                                title={`Abrir/baixar anexo: ${s.anexo}`}
+                              >
+                                <Paperclip className="w-3.5 h-3.5" />
+                                <span>Anexo</span>
+                              </a>
                             ) : (
-                              <span className="text-[#94A3B8]">—</span>
+                              <span className="text-[#CBD5E1]">—</span>
                             )}
                           </td>
                           <td className="py-3 px-4 text-right whitespace-nowrap">
@@ -864,6 +910,19 @@ export default function SolicitacoesList() {
                               className="flex items-center justify-end gap-1"
                               onClick={(e) => e.stopPropagation()}
                             >
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setViewingSolicitacao(s)
+                                  setDetalheModalOpen(true)
+                                }}
+                                className="h-7 w-7 p-0 text-[#64748B] hover:text-[#1FAF7A]"
+                                title="Visualizar Detalhes"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </Button>
+
                               {canEdit && s.status !== 'Concluída' && (
                                 <Button
                                   size="sm"
@@ -972,7 +1031,21 @@ export default function SolicitacoesList() {
                           {/* Badges superiores: Tipo & Prioridade */}
                           <div className="flex items-center justify-between gap-1.5 mb-2">
                             {getTipoBadge(item.tipo)}
-                            {getPrioridadeBadge(item.prioridade)}
+                            <div className="flex items-center gap-1">
+                              {item.anexo && (
+                                <a
+                                  href={`/api/files/solicitacoes/${item.id}/${item.anexo}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="text-[#1FAF7A] hover:text-emerald-700 p-0.5"
+                                  title={`Anexo: ${item.anexo}`}
+                                >
+                                  <Paperclip className="w-3.5 h-3.5" />
+                                </a>
+                              )}
+                              {getPrioridadeBadge(item.prioridade)}
+                            </div>
                           </div>
 
                           {/* Título */}
@@ -987,6 +1060,19 @@ export default function SolicitacoesList() {
                             </p>
                           )}
 
+                          {/* Solicitante se preenchido */}
+                          {item.solicitante && (
+                            <div className="mt-1.5 flex items-center gap-1 text-[10px] text-[#475569]">
+                              <User className="w-3 h-3 text-[#94A3B8] shrink-0" />
+                              <span className="truncate">
+                                Solicitante:{' '}
+                                <strong className="font-semibold text-[#1E293B]">
+                                  {item.solicitante}
+                                </strong>
+                              </span>
+                            </div>
+                          )}
+
                           {/* Projeto Vinculado */}
                           {item.expand?.projeto && (
                             <div className="mt-2 pt-2 border-t border-slate-100 flex items-center gap-1.5 text-[10px] text-[#475569] font-medium">
@@ -998,7 +1084,7 @@ export default function SolicitacoesList() {
                           {/* Rodapé do card: Prazo & Responsável */}
                           <div className="mt-2 pt-1.5 flex items-center justify-between text-[10px] text-[#64748B]">
                             <span className="truncate font-medium">
-                              {item.responsavel ? item.responsavel.split(' ')[0] : 'Não atribuído'}
+                              Resp: {item.responsavel ? item.responsavel.split(' ')[0] : '—'}
                             </span>
 
                             {item.prazo && (
@@ -1037,6 +1123,159 @@ export default function SolicitacoesList() {
         onSuccess={fetchData}
         solicitacaoToEdit={editingSolicitacao}
       />
+
+      {/* Modal de Visualização de Detalhe (Leitura ou Consulta Completa) */}
+      <Dialog open={detalheModalOpen} onOpenChange={(v) => !v && setDetalheModalOpen(false)}>
+        <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-[#1E293B] flex items-center gap-2">
+              Detalhes da Solicitação
+            </DialogTitle>
+          </DialogHeader>
+
+          {viewingSolicitacao && (
+            <div className="space-y-4 py-2 text-xs">
+              <div>
+                <span className="text-[10px] uppercase font-bold text-[#64748B]">Título</span>
+                <h3 className="text-sm font-bold text-[#1E293B] mt-0.5">
+                  {viewingSolicitacao.titulo}
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-[#E2E8F0]">
+                <div>
+                  <span className="text-[10px] text-[#64748B] block">Tipo</span>
+                  <div className="mt-1">{getTipoBadge(viewingSolicitacao.tipo)}</div>
+                </div>
+                <div>
+                  <span className="text-[10px] text-[#64748B] block">Prioridade</span>
+                  <div className="mt-1">{getPrioridadeBadge(viewingSolicitacao.prioridade)}</div>
+                </div>
+                <div>
+                  <span className="text-[10px] text-[#64748B] block">Status</span>
+                  <div className="mt-1">{getStatusBadge(viewingSolicitacao.status)}</div>
+                </div>
+                <div>
+                  <span className="text-[10px] text-[#64748B] block">Prazo</span>
+                  <span className="font-semibold text-[#1E293B] block mt-1">
+                    {viewingSolicitacao.prazo ? formatDateBR(viewingSolicitacao.prazo) : '—'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[#E2E8F0]">
+                <div>
+                  <span className="text-[10px] text-[#64748B] block">Solicitante</span>
+                  <span className="font-medium text-[#1E293B]">
+                    {viewingSolicitacao.solicitante || '—'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-[#64748B] block">Data da Solicitação</span>
+                  <span className="font-medium text-[#1E293B]">
+                    {viewingSolicitacao.data_solicitacao
+                      ? formatDateBR(viewingSolicitacao.data_solicitacao)
+                      : viewingSolicitacao.created
+                        ? formatDateBR(viewingSolicitacao.created)
+                        : '—'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-[#64748B] block">Responsável</span>
+                  <span className="font-medium text-[#1E293B]">
+                    {viewingSolicitacao.responsavel || '—'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-[#64748B] block">Projeto / Secretaria</span>
+                  <span className="font-medium text-[#1E293B]">
+                    {viewingSolicitacao.expand?.projeto?.nome || 'Geral / Não vinculado'}
+                    {viewingSolicitacao.expand?.secretaria &&
+                      ` (${viewingSolicitacao.expand.secretaria.nome})`}
+                  </span>
+                </div>
+              </div>
+
+              {viewingSolicitacao.descricao && (
+                <div className="pt-2 border-t border-[#E2E8F0]">
+                  <span className="text-[10px] text-[#64748B] block font-semibold mb-1">
+                    Detalhamento / Contexto
+                  </span>
+                  <p className="p-2.5 rounded bg-slate-50 text-[#334155] leading-relaxed whitespace-pre-wrap">
+                    {viewingSolicitacao.descricao}
+                  </p>
+                </div>
+              )}
+
+              {/* Anexo no Detalhe */}
+              <div className="pt-2 border-t border-[#E2E8F0]">
+                <span className="text-[10px] text-[#64748B] block font-semibold mb-1">
+                  Arquivo Anexo
+                </span>
+                {viewingSolicitacao.anexo ? (
+                  <div className="flex items-center justify-between p-2.5 rounded-lg border border-emerald-200 bg-emerald-50">
+                    <div className="flex items-center gap-2 truncate">
+                      <Paperclip className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span className="font-medium text-emerald-900 truncate">
+                        {viewingSolicitacao.anexo}
+                      </span>
+                    </div>
+                    <a
+                      href={`/api/files/solicitacoes/${viewingSolicitacao.id}/${viewingSolicitacao.anexo}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs font-semibold shadow-xs shrink-0 ml-2"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      Baixar / Abrir
+                    </a>
+                  </div>
+                ) : (
+                  <p className="text-[#94A3B8] italic">
+                    Nenhum arquivo anexado a esta solicitação.
+                  </p>
+                )}
+              </div>
+
+              {viewingSolicitacao.conclusao && (
+                <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900">
+                  <span className="font-bold block mb-1">Providência / Conclusão Registrada:</span>
+                  <p className="leading-relaxed whitespace-pre-wrap">
+                    {viewingSolicitacao.conclusao}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setDetalheModalOpen(false)}
+              className="text-xs"
+            >
+              Fechar
+            </Button>
+            {canEdit && viewingSolicitacao && (
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  setDetalheModalOpen(false)
+                  setEditingSolicitacao(viewingSolicitacao)
+                  setModalOpen(true)
+                }}
+                className="bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs font-semibold"
+              >
+                <Edit2 className="w-3.5 h-3.5 mr-1.5" />
+                Editar Solicitação
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal Rápido de Conclusão / Providência Adotada */}
       <Dialog open={concluirModalOpen} onOpenChange={(v) => !v && setConcluirModalOpen(false)}>
