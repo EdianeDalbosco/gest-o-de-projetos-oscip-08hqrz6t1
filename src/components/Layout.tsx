@@ -21,6 +21,7 @@ import {
   Shield,
   Settings,
   UserCog,
+  CheckSquare,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -59,6 +60,7 @@ const rawNavSections: NavSection[] = [
     items: [
       { label: 'Instrumentos', path: '/convenios', icon: Landmark },
       { label: 'Lista de Projetos', path: '/projetos', icon: FolderKanban },
+      { label: 'Solicitações & Pendências', path: '/solicitacoes', icon: CheckSquare },
     ],
   },
   {
@@ -143,6 +145,7 @@ export default function Layout() {
     if (path.startsWith('/projetos/novo')) return 'Novo Projeto'
     if (path.startsWith('/projetos/') && path !== '/projetos') return 'Detalhes do Projeto'
     if (path === '/projetos') return 'Projetos'
+    if (path === '/solicitacoes') return 'Solicitações & Pendências'
     if (path.startsWith('/convenios/') && path !== '/convenios') return 'Detalhes do Instrumento'
     if (path === '/convenios') return 'Instrumentos Municipais'
     if (path === '/faturamento') return 'Faturamento & Faturas'
@@ -490,7 +493,7 @@ export default function Layout() {
               <Building2 className="w-3.5 h-3.5 text-[#1FAF7A]" />
               Institucional
             </span>
-            <span>v1.2.0</span>
+            <span>v0.0.43</span>
           </div>
         </footer>
       </div>

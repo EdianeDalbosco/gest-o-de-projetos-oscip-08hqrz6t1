@@ -16,6 +16,7 @@ import {
   FileCheck,
   Check,
   X,
+  ExternalLink,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -36,14 +37,17 @@ import {
   updateAtividade,
   getCatalogoAtividades,
   deleteCatalogoAtividade,
+  getSolicitacoesByProjeto,
 } from '@/services/api'
 import { useRealtime } from '@/hooks/use-realtime'
+import { ModalSolicitacao } from '@/components/ModalSolicitacao'
 import type {
   ProjetoRecord,
   AtividadeRecord,
   FaturaRecord,
   ContratoRecord,
   CatalogoAtividadeRecord,
+  SolicitacaoRecord,
 } from '@/types'
 
 export default function ProjetoDetail() {
@@ -55,12 +59,15 @@ export default function ProjetoDetail() {
   const [faturas, setFaturas] = useState<FaturaRecord[]>([])
   const [equipe, setEquipe] = useState<ContratoRecord[]>([])
   const [catalogo, setCatalogo] = useState<CatalogoAtividadeRecord[]>([])
+  const [solicitacoes, setSolicitacoes] = useState<SolicitacaoRecord[]>([])
   const [loading, setLoading] = useState(true)
 
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [atividadeModalOpen, setAtividadeModalOpen] = useState(false)
   const [catalogoModalOpen, setCatalogoModalOpen] = useState(false)
   const [importarModalOpen, setImportarModalOpen] = useState(false)
+  const [solicitacaoModalOpen, setSolicitacaoModalOpen] = useState(false)
+  const [editingSolicitacao, setEditingSolicitacao] = useState<SolicitacaoRecord | null>(null)
   const [editingCatalogoAtiv, setEditingCatalogoAtiv] = useState<CatalogoAtividadeRecord | null>(
     null,
   )
@@ -69,17 +76,19 @@ export default function ProjetoDetail() {
   const fetchData = async () => {
     if (!id) return
     try {
-      const [proj, ativList, fatList, allContratos, catList] = await Promise.all([
+      const [proj, ativList, fatList, allContratos, catList, solList] = await Promise.all([
         getProjetoById(id),
         getAtividadesByProjeto(id),
         getFaturasByProjeto(id),
         getContratos(),
         getCatalogoAtividades(id),
+        getSolicitacoesByProjeto(id),
       ])
       setProjeto(proj)
       setAtividades(ativList)
       setFaturas(fatList)
       setCatalogo(catList)
+      setSolicitacoes(solList)
       // vinculados a este projeto
       setEquipe(allContratos.filter((c) => c.projeto_id === id))
     } catch (err) {
@@ -97,6 +106,7 @@ export default function ProjetoDetail() {
   useRealtime('atividades', () => fetchData())
   useRealtime('faturas', () => fetchData())
   useRealtime('catalogo_atividades', () => fetchData())
+  useRealtime('solicitacoes', () => fetchData())
 
   const handleApproveAtividade = async (ativId: string) => {
     try {
@@ -249,6 +259,12 @@ export default function ProjetoDetail() {
             className="text-xs font-semibold px-4 data-[state=active]:bg-[#1FAF7A] data-[state=active]:text-white"
           >
             Financeiro ({faturas.length})
+          </TabsTrigger>
+          <TabsTrigger
+            value="solicitacoes"
+            className="text-xs font-semibold px-4 data-[state=active]:bg-[#1FAF7A] data-[state=active]:text-white"
+          >
+            Solicitações & Pendências ({solicitacoes.length})
           </TabsTrigger>
         </TabsList>
 
@@ -639,6 +655,161 @@ export default function ProjetoDetail() {
           </Card>
         </TabsContent>
 
+        {/* ABA 4: SOLICITAÇÕES & PENDÊNCIAS */}
+        <TabsContent value="solicitacoes" className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-[#E2E8F0]">
+            <div>
+              <h3 className="text-sm font-bold text-[#1E293B]">
+                Solicitações & Pendências Vinculadas ao Projeto
+              </h3>
+              <p className="text-xs text-[#64748B]">
+                Acompanhamento das demandas operacionais, financeiras e documentais deste projeto.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button asChild variant="outline" size="sm" className="text-xs">
+                <Link to="/solicitacoes">
+                  Ver Todas as Solicitações
+                  <ExternalLink className="w-3.5 h-3.5 ml-1" />
+                </Link>
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setEditingSolicitacao(null)
+                  setSolicitacaoModalOpen(true)
+                }}
+                className="bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs font-semibold shadow-sm shadow-[#1FAF7A]/25"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" />
+                Nova Solicitação
+              </Button>
+            </div>
+          </div>
+
+          <Card className="border-[#E2E8F0] overflow-hidden">
+            <CardContent className="p-0">
+              {solicitacoes.length === 0 ? (
+                <div className="text-center py-12 text-xs text-[#64748B] space-y-2">
+                  <p>Nenhuma solicitação ou pendência vinculada a este projeto.</p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setEditingSolicitacao(null)
+                      setSolicitacaoModalOpen(true)
+                    }}
+                    className="text-xs mt-1"
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1" />
+                    Cadastrar Primeira Solicitação
+                  </Button>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-[#E2E8F0] bg-slate-50 text-[#64748B] font-semibold">
+                        <th className="py-3 px-4">Título</th>
+                        <th className="py-3 px-3">Tipo</th>
+                        <th className="py-3 px-3">Prioridade</th>
+                        <th className="py-3 px-3">Status</th>
+                        <th className="py-3 px-3">Responsável</th>
+                        <th className="py-3 px-3">Prazo</th>
+                        <th className="py-3 px-4 text-right">Ação</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#F1F5F9]">
+                      {solicitacoes.map((s) => {
+                        const dtPrazo = s.prazo ? new Date(s.prazo) : null
+                        const hoje = new Date()
+                        hoje.setHours(0, 0, 0, 0)
+                        const atrasada =
+                          dtPrazo &&
+                          s.status !== 'Concluída' &&
+                          s.status !== 'Cancelada' &&
+                          dtPrazo < hoje
+
+                        return (
+                          <tr key={s.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="py-3 px-4 max-w-xs">
+                              <span className="font-bold text-[#1E293B] block">{s.titulo}</span>
+                              {s.descricao && (
+                                <span className="text-[11px] text-[#64748B] line-clamp-1">
+                                  {s.descricao}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700">
+                                {s.tipo}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3">
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
+                                  s.prioridade === 'Urgente'
+                                    ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                    : s.prioridade === 'Alta'
+                                      ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                      : 'bg-blue-50 text-blue-700 border border-blue-200'
+                                }`}
+                              >
+                                {s.prioridade}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3">
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
+                                  s.status === 'Concluída'
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                    : s.status === 'Cancelada'
+                                      ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                      : 'bg-amber-50 text-amber-700 border border-amber-200'
+                                }`}
+                              >
+                                {s.status}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 text-[#475569]">{s.responsavel || '—'}</td>
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              {s.prazo ? (
+                                <span
+                                  className={
+                                    atrasada ? 'text-rose-600 font-bold' : 'text-[#64748B]'
+                                  }
+                                >
+                                  {formatDateBR(s.prazo)} {atrasada && '(Atrasada)'}
+                                </span>
+                              ) : (
+                                <span className="text-[#94A3B8]">—</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setEditingSolicitacao(s)
+                                  setSolicitacaoModalOpen(true)
+                                }}
+                                className="h-7 w-7 p-0 text-[#64748B] hover:text-[#1FAF7A]"
+                                title="Editar Solicitação"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* ABA 3: FINANCEIRO */}
         <TabsContent value="financeiro" className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -757,6 +928,15 @@ export default function ProjetoDetail() {
         onSuccess={fetchData}
         projetoId={projeto.id}
         catalogoExistente={catalogo}
+      />
+
+      {/* Modal Solicitação Vinculada */}
+      <ModalSolicitacao
+        open={solicitacaoModalOpen}
+        onClose={() => setSolicitacaoModalOpen(false)}
+        onSuccess={fetchData}
+        solicitacaoToEdit={editingSolicitacao}
+        defaultProjetoId={projeto.id}
       />
     </div>
   )

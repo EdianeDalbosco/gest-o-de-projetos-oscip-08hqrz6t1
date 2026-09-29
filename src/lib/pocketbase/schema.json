@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-28T04:47:48.342Z",
+  "generatedAt": "2026-09-29T19:33:06.597Z",
   "collections": [
     {
       "name": "users",
@@ -1406,6 +1406,123 @@
         }
       ],
       "indexes": ["CREATE INDEX idx_org_config_cnpj ON organizacao_config (cnpj)"]
+    },
+    {
+      "name": "solicitacoes",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "titulo",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "descricao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "tipo",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "Solicitação",
+            "Pendência",
+            "Pendência Financeira",
+            "Documentação",
+            "Outro"
+          ]
+        },
+        {
+          "name": "prioridade",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Baixa", "Média", "Alta", "Urgente"]
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "Aberta",
+            "Em Análise",
+            "Em Andamento",
+            "Aguardando Terceiro",
+            "Concluída",
+            "Cancelada"
+          ]
+        },
+        {
+          "name": "responsavel",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "prazo",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "projeto",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "projetos"
+        },
+        {
+          "name": "secretaria",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "secretarias"
+        },
+        {
+          "name": "conclusao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "criado_por",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_solicitacoes_status ON solicitacoes (status)",
+        "CREATE INDEX idx_solicitacoes_prioridade ON solicitacoes (prioridade)",
+        "CREATE INDEX idx_solicitacoes_projeto ON solicitacoes (projeto)",
+        "CREATE INDEX idx_solicitacoes_prazo ON solicitacoes (prazo)"
+      ]
     }
   ]
 }

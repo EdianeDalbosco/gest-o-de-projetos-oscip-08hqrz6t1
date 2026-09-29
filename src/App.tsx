@@ -28,6 +28,7 @@ import AtividadesList from './pages/contratos/AtividadesList'
 import PrestadoresList from './pages/contratos/PrestadoresList'
 import ConfiguracaoOrganizacao from './pages/configuracao/ConfiguracaoOrganizacao'
 import UsuariosList from './pages/usuarios/UsuariosList'
+import SolicitacoesList from './pages/solicitacoes/SolicitacoesList'
 
 const App = () => (
   <BrowserRouter>
@@ -54,6 +55,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/projetos" element={<ProjetosList />} />
             <Route path="/projetos/:id" element={<ProjetoDetail />} />
+            <Route path="/solicitacoes" element={<SolicitacoesList />} />
             <Route path="/convenios" element={<ConveniosList />} />
             <Route path="/convenios/:id" element={<ConvenioDetail />} />
             <Route path="/faturamento" element={<Faturamento />} />

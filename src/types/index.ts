@@ -332,3 +332,39 @@ export interface EmpenhoRecord extends RecordModel {
     convenio_id?: ConvenioRecord
   }
 }
+
+// SOLICITAÇÕES & PENDÊNCIAS
+export type SolicitacaoTipo =
+  | 'Solicitação'
+  | 'Pendência'
+  | 'Pendência Financeira'
+  | 'Documentação'
+  | 'Outro'
+
+export type SolicitacaoPrioridade = 'Baixa' | 'Média' | 'Alta' | 'Urgente'
+
+export type SolicitacaoStatus =
+  | 'Aberta'
+  | 'Em Análise'
+  | 'Em Andamento'
+  | 'Aguardando Terceiro'
+  | 'Concluída'
+  | 'Cancelada'
+
+export interface SolicitacaoRecord extends RecordModel {
+  titulo: string
+  descricao?: string
+  tipo: SolicitacaoTipo
+  prioridade: SolicitacaoPrioridade
+  status: SolicitacaoStatus
+  responsavel?: string
+  prazo?: string
+  projeto?: string
+  secretaria?: string
+  conclusao?: string
+  criado_por?: string
+  expand?: {
+    projeto?: ProjetoRecord
+    secretaria?: SecretariaRecord
+  }
+}

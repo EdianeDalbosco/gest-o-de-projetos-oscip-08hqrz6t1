@@ -14,12 +14,20 @@ import {
   ExternalLink,
   ChevronRight,
   TrendingDown,
+  CheckSquare,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { StatusBadge, formatBRL, formatDateBR } from '@/components/StatusBadge'
-import { getProjetos, getContratos, getAtividades, getFaturas, getDespesas } from '@/services/api'
+import {
+  getProjetos,
+  getContratos,
+  getAtividades,
+  getFaturas,
+  getDespesas,
+  getSolicitacoes,
+} from '@/services/api'
 import { useRealtime } from '@/hooks/use-realtime'
 import type {
   ProjetoRecord,
@@ -27,6 +35,7 @@ import type {
   AtividadeRecord,
   FaturaRecord,
   DespesaRecord,
+  SolicitacaoRecord,
 } from '@/types'
 
 export default function Index() {
@@ -35,22 +44,25 @@ export default function Index() {
   const [atividades, setAtividades] = useState<AtividadeRecord[]>([])
   const [faturas, setFaturas] = useState<FaturaRecord[]>([])
   const [despesas, setDespesas] = useState<DespesaRecord[]>([])
+  const [solicitacoes, setSolicitacoes] = useState<SolicitacaoRecord[]>([])
   const [loading, setLoading] = useState(true)
 
   const loadData = async () => {
     try {
-      const [projList, contList, ativList, fatList, despList] = await Promise.all([
+      const [projList, contList, ativList, fatList, despList, solList] = await Promise.all([
         getProjetos(),
         getContratos(),
         getAtividades(),
         getFaturas(),
         getDespesas(),
+        getSolicitacoes(),
       ])
       setProjetos(projList)
       setContratos(contList)
       setAtividades(ativList)
       setFaturas(fatList)
       setDespesas(despList)
+      setSolicitacoes(solList)
     } catch (e) {
       console.error('Erro ao carregar dados do dashboard:', e)
     } finally {
@@ -68,6 +80,7 @@ export default function Index() {
   useRealtime('atividades', () => loadData())
   useRealtime('faturas', () => loadData())
   useRealtime('despesas', () => loadData())
+  useRealtime('solicitacoes', () => loadData())
 
   // 1. KPIs
   // Faturamento do Mês atual (faturas pagas e emitidas deste mês)
@@ -237,6 +250,46 @@ export default function Index() {
 
     return list
   }, [faturas, contratos, atividades])
+
+  // 6. Pendências em Aberto mais urgentes (atrasadas primeiro, limite 5)
+  const pendenciasEmAberto = useMemo(() => {
+    const abertas = solicitacoes.filter((s) => s.status !== 'Concluída' && s.status !== 'Cancelada')
+
+    const hoje = new Date()
+    hoje.setHours(0, 0, 0, 0)
+
+    const isAtrasada = (s: SolicitacaoRecord) => {
+      if (!s.prazo) return false
+      return new Date(s.prazo) < hoje
+    }
+
+    const prioridadePeso: Record<string, number> = {
+      Urgente: 4,
+      Alta: 3,
+      Média: 2,
+      Baixa: 1,
+    }
+
+    return abertas
+      .sort((a, b) => {
+        const aAtraso = isAtrasada(a)
+        const bAtraso = isAtrasada(b)
+        if (aAtraso !== bAtraso) return aAtraso ? -1 : 1
+
+        const pA = prioridadePeso[a.prioridade] || 0
+        const pB = prioridadePeso[b.prioridade] || 0
+        if (pA !== pB) return pB - pA
+
+        if (a.prazo && b.prazo) {
+          return new Date(a.prazo).getTime() - new Date(b.prazo).getTime()
+        }
+        if (a.prazo) return -1
+        if (b.prazo) return 1
+
+        return new Date(b.created).getTime() - new Date(a.created).getTime()
+      })
+      .slice(0, 5)
+  }, [solicitacoes])
 
   const [hoveredBar, setHoveredBar] = useState<{ month: string; value: number } | null>(null)
 
@@ -487,6 +540,111 @@ export default function Index() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ROW 2.5: WIDGET PENDÊNCIAS EM ABERTO */}
+      <Card className="border-[#E2E8F0] shadow-sm">
+        <CardHeader className="pb-3 flex flex-row items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center">
+              <CheckSquare className="w-4 h-4" />
+            </div>
+            <div>
+              <CardTitle className="text-base font-bold text-[#1E293B]">
+                Pendências em Aberto
+              </CardTitle>
+              <CardDescription className="text-xs text-[#64748B]">
+                Demandas prioritárias e prazos que requerem atenção da equipe
+              </CardDescription>
+            </div>
+          </div>
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="text-xs font-semibold text-[#1FAF7A]"
+          >
+            <Link to="/solicitacoes">
+              Ver todas (
+              {
+                solicitacoes.filter((s) => s.status !== 'Concluída' && s.status !== 'Cancelada')
+                  .length
+              }
+              )
+              <ChevronRight className="w-4 h-4 ml-1" />
+            </Link>
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {pendenciasEmAberto.length === 0 ? (
+            <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 p-3.5 rounded-lg border border-emerald-100">
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+              <span>Nenhuma pendência ou solicitação em aberto no momento. Tudo em dia!</span>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+              {pendenciasEmAberto.map((item) => {
+                const hoje = new Date()
+                hoje.setHours(0, 0, 0, 0)
+                const atrasada = item.prazo ? new Date(item.prazo) < hoje : false
+
+                return (
+                  <Link
+                    key={item.id}
+                    to="/solicitacoes"
+                    className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:border-[#1FAF7A] hover:shadow-xs transition-all flex flex-col justify-between group"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-1 mb-1.5">
+                        <span
+                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                            item.prioridade === 'Urgente'
+                              ? 'bg-rose-100 text-rose-800'
+                              : item.prioridade === 'Alta'
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-blue-100 text-blue-800'
+                          }`}
+                        >
+                          {item.prioridade}
+                        </span>
+                        <span className="text-[10px] text-[#64748B] font-medium">
+                          {item.status}
+                        </span>
+                      </div>
+
+                      <h4 className="text-xs font-bold text-[#1E293B] group-hover:text-[#1FAF7A] transition-colors line-clamp-2 leading-tight">
+                        {item.titulo}
+                      </h4>
+
+                      {item.expand?.projeto && (
+                        <p className="text-[10px] text-[#64748B] truncate mt-1">
+                          {item.expand.projeto.nome}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="mt-2.5 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[10px]">
+                      <span className="text-[#64748B] truncate max-w-[90px]">
+                        {item.responsavel ? item.responsavel.split(' ')[0] : '—'}
+                      </span>
+                      {item.prazo ? (
+                        <span
+                          className={`font-semibold ${
+                            atrasada ? 'text-rose-600 font-bold' : 'text-[#64748B]'
+                          }`}
+                        >
+                          {formatDateBR(item.prazo)} {atrasada && '!'}
+                        </span>
+                      ) : (
+                        <span className="text-[#94A3B8]">Sem prazo</span>
+                      )}
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* ROW 3: PROJETOS ATIVOS (Tabela compacta full width) */}
       <Card className="border-[#E2E8F0] shadow-sm">

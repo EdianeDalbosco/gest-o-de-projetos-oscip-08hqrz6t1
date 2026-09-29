@@ -15,6 +15,7 @@ import type {
   FaturamentoMensalRecord,
   OrganizacaoConfigRecord,
   UserRecord,
+  SolicitacaoRecord,
 } from '@/types'
 
 // PROJETOS
@@ -496,4 +497,48 @@ export async function updateUser(id: string, data: Partial<UserRecord>): Promise
 
 export async function deleteUser(id: string): Promise<boolean> {
   return pb.collection('users').delete(id)
+}
+
+// SOLICITAÇÕES & PENDÊNCIAS
+export async function getSolicitacoes(filter?: string): Promise<SolicitacaoRecord[]> {
+  return pb.collection('solicitacoes').getFullList<SolicitacaoRecord>({
+    filter: filter || '',
+    sort: '-created',
+    expand: 'projeto,secretaria',
+  })
+}
+
+export async function getSolicitacoesByProjeto(projetoId: string): Promise<SolicitacaoRecord[]> {
+  return pb.collection('solicitacoes').getFullList<SolicitacaoRecord>({
+    filter: `projeto = '${projetoId}'`,
+    sort: '-created',
+    expand: 'projeto,secretaria',
+  })
+}
+
+export async function getSolicitacaoById(id: string): Promise<SolicitacaoRecord> {
+  return pb.collection('solicitacoes').getOne<SolicitacaoRecord>(id, {
+    expand: 'projeto,secretaria',
+  })
+}
+
+export async function createSolicitacao(
+  data: Partial<SolicitacaoRecord>,
+): Promise<SolicitacaoRecord> {
+  return pb.collection('solicitacoes').create<SolicitacaoRecord>(data, {
+    expand: 'projeto,secretaria',
+  })
+}
+
+export async function updateSolicitacao(
+  id: string,
+  data: Partial<SolicitacaoRecord>,
+): Promise<SolicitacaoRecord> {
+  return pb.collection('solicitacoes').update<SolicitacaoRecord>(id, data, {
+    expand: 'projeto,secretaria',
+  })
+}
+
+export async function deleteSolicitacao(id: string): Promise<boolean> {
+  return pb.collection('solicitacoes').delete(id)
 }
