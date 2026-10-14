@@ -167,8 +167,12 @@ export default function AtividadesList() {
     }
   }
 
+  const safeAtividades = Array.isArray(atividades) ? atividades : []
+  const safePrestadores = Array.isArray(prestadores) ? prestadores : []
   const totalHoras = filteredAtividades.reduce((s, a) => s + (Number(a.horas) || 0), 0)
-  const pendentesCount = atividades.filter((a) => a.status === 'pendente').length
+  const pendentesCount = safeAtividades.filter(
+    (a) => (a?.status || '').toLowerCase().trim() === 'pendente',
+  ).length
 
   return (
     <div className="space-y-6">
@@ -221,7 +225,7 @@ export default function AtividadesList() {
               Total de Prestadores PJ
             </span>
             <p className="text-xl font-bold text-blue-700 mt-1 tabular-nums">
-              {prestadores.length}
+              {safePrestadores.length}
             </p>
             <span className="text-[11px] text-[#94A3B8]">Fornecedores e especialistas</span>
           </CardContent>
@@ -284,25 +288,32 @@ export default function AtividadesList() {
       {/* Tabela de Atividades */}
       <Card className="border-[#E2E8F0] shadow-sm overflow-hidden">
         <CardContent className="p-0">
-          {filteredAtividades.length === 0 ? (
+          {loading ? (
+            <div className="py-20 text-center flex flex-col items-center justify-center gap-2">
+              <div className="w-8 h-8 border-2 border-[#1FAF7A] border-t-transparent rounded-full animate-spin" />
+              <p className="text-xs text-[#64748B]">Carregando atividades...</p>
+            </div>
+          ) : filteredAtividades.length === 0 ? (
             <div className="text-center py-16 px-4 space-y-3">
               <div className="w-12 h-12 rounded-full bg-emerald-50 text-[#1FAF7A] flex items-center justify-center mx-auto">
                 <CalendarCheck2 className="w-6 h-6" />
               </div>
               <h3 className="text-sm font-bold text-[#1E293B]">
-                {atividades.length > 0
+                {safeAtividades.length > 0
                   ? 'Nenhuma atividade corresponde aos filtros'
                   : 'Nenhuma atividade registrada'}
               </h3>
               <p className="text-xs text-[#64748B] max-w-sm mx-auto">
-                {atividades.length > 0
-                  ? `Existem ${atividades.length} ${
-                      atividades.length === 1 ? 'atividade registrada' : 'atividades registradas'
+                {safeAtividades.length > 0
+                  ? `Existem ${safeAtividades.length} ${
+                      safeAtividades.length === 1
+                        ? 'atividade registrada'
+                        : 'atividades registradas'
                     }, mas os filtros ativos estão ocultando os itens.`
                   : 'Lance as horas trabalhadas e entregas dos prestadores PJ para aprovação da coordenação e cálculo de faturamento.'}
               </p>
               <div className="flex items-center justify-center gap-2 flex-wrap pt-1">
-                {atividades.length > 0 &&
+                {safeAtividades.length > 0 &&
                   (search ||
                     statusFilter !== 'todos' ||
                     prestadorFilter !== 'todos' ||
@@ -326,7 +337,7 @@ export default function AtividadesList() {
                   className="bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs font-semibold"
                 >
                   <Plus className="w-3.5 h-3.5 mr-1" />
-                  {atividades.length > 0 ? 'Nova Atividade' : 'Registrar Primeira Atividade'}
+                  {safeAtividades.length > 0 ? 'Nova Atividade' : 'Registrar Primeira Atividade'}
                 </Button>
               </div>
             </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { Card as UICard, CardContent as UICardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -29,6 +29,7 @@ import {
   getOrganizacaoConfig,
   getUsers,
 } from '@/services/api'
+import { useRealtime } from '@/hooks/use-realtime'
 import { exportarSolicitacoesPdf, imprimirSolicitacoes } from '@/services/exportSolicitacoes'
 import { ModalSolicitacao } from '@/components/ModalSolicitacao'
 import type {
@@ -156,24 +157,20 @@ export default function SolicitacoesList() {
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const [dragOverCol, setDragOverCol] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetchData()
-  }, [])
-
   // Guard de requisições concorrentes
-  const [requestId, setRequestId] = useState(0)
+  const requestIdRef = useRef(0)
 
   const fetchData = async () => {
-    const currentId = requestId + 1
-    setRequestId(currentId)
+    const currentId = ++requestIdRef.current
     try {
-      setLoading(true)
       const results = await Promise.allSettled([
         getSolicitacoes(),
         getProjetos(),
         getOrganizacaoConfig(),
         getUsers().catch(() => []),
       ])
+
+      if (currentId !== requestIdRef.current) return
 
       const [sRes, pRes, cfgRes, uRes] = results
 
@@ -206,6 +203,7 @@ export default function SolicitacoesList() {
         console.error('Erro ao buscar usuários:', uRes.reason)
       }
     } catch (err) {
+      if (currentId !== requestIdRef.current) return
       console.error('Erro inesperado em fetchData de SolicitacoesList:', err)
       toast({
         title: 'Erro ao carregar dados',
@@ -213,9 +211,33 @@ export default function SolicitacoesList() {
         variant: 'destructive',
       })
     } finally {
-      setLoading(false)
+      if (currentId === requestIdRef.current) {
+        setLoading(false)
+      }
     }
   }
+
+  // Debounce realtime
+  const realtimeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const scheduleFetchData = React.useCallback(() => {
+    if (realtimeTimeoutRef.current) {
+      clearTimeout(realtimeTimeoutRef.current)
+    }
+    realtimeTimeoutRef.current = setTimeout(() => {
+      fetchData()
+    }, 150)
+  }, [])
+
+  useEffect(() => {
+    fetchData()
+    return () => {
+      if (realtimeTimeoutRef.current) {
+        clearTimeout(realtimeTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  useRealtime('solicitacoes', scheduleFetchData)
 
   const handleToggleView = (mode: 'list' | 'kanban') => {
     setViewMode(mode)
@@ -897,7 +919,12 @@ export default function SolicitacoesList() {
       </div>
 
       {/* Conteúdo: Visualização LISTA ou KANBAN */}
-      {viewMode === 'list' ? (
+      {loading ? (
+        <div className="py-20 text-center flex flex-col items-center justify-center gap-2">
+          <div className="w-8 h-8 border-2 border-[#1FAF7A] border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-[#64748B]">Carregando solicitações...</p>
+        </div>
+      ) : viewMode === 'list' ? (
         /* VISUALIZAÇÃO A: TABELA / LISTA */
         <UICard className="border-[#E2E8F0] shadow-sm overflow-hidden">
           <UICardContent className="p-0">

@@ -396,7 +396,8 @@ export default function ConveniosList() {
 
       {/* Instrumentos Grid */}
       {loading ? (
-        <div className="py-20 text-center">
+        <div className="py-20 text-center flex flex-col items-center justify-center gap-2">
+          <div className="w-8 h-8 border-2 border-[#1FAF7A] border-t-transparent rounded-full animate-spin" />
           <p className="text-xs text-[#64748B]">Carregando instrumentos municipais...</p>
         </div>
       ) : filteredConvenios.length === 0 ? (
@@ -545,7 +546,9 @@ export default function ConveniosList() {
 
                   <div className="flex items-center gap-1.5 text-xs text-[#64748B] mt-1.5">
                     <Building2 className="w-3.5 h-3.5 text-[#1FAF7A] shrink-0" />
-                    <span className="font-medium text-[#1E293B]">{conv.municipio}</span>
+                    <span className="font-medium text-[#1E293B]">
+                      {conv.municipio || 'Município não informado'}
+                    </span>
                     {conv.orgao_contratante && (
                       <>
                         <span className="text-[#CBD5E1]">•</span>

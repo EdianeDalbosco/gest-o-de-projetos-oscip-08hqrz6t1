@@ -128,8 +128,13 @@ export default function PrestadoresList() {
     }
   }
 
-  const totalPJ = prestadores.filter((p) => p.tipo === 'PJ').length
-  const totalCLT = prestadores.filter((p) => p.tipo === 'CLT').length
+  const safePrestadores = Array.isArray(prestadores) ? prestadores : []
+  const totalPJ = safePrestadores.filter(
+    (p) => (p?.tipo || '').toUpperCase().trim() === 'PJ',
+  ).length
+  const totalCLT = safePrestadores.filter(
+    (p) => (p?.tipo || '').toUpperCase().trim() === 'CLT',
+  ).length
 
   return (
     <div className="space-y-6">
@@ -175,7 +180,7 @@ export default function PrestadoresList() {
                 Total Cadastrado
               </span>
               <p className="text-2xl font-bold text-[#1E293B] mt-1 tabular-nums">
-                {prestadores.length}
+                {safePrestadores.length}
               </p>
               <span className="text-[11px] text-[#94A3B8]">Registros ativos no sistema</span>
             </div>
@@ -245,26 +250,29 @@ export default function PrestadoresList() {
       <Card className="border-[#E2E8F0] shadow-sm overflow-hidden">
         <CardContent className="p-0">
           {loading ? (
-            <div className="py-12 text-center text-xs text-[#64748B]">Carregando cadastros...</div>
+            <div className="py-20 text-center flex flex-col items-center justify-center gap-2">
+              <div className="w-8 h-8 border-2 border-[#1FAF7A] border-t-transparent rounded-full animate-spin" />
+              <p className="text-xs text-[#64748B]">Carregando cadastros...</p>
+            </div>
           ) : filtered.length === 0 ? (
             <div className="py-16 text-center text-xs text-[#64748B] space-y-3 px-4">
               <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center mx-auto">
                 <Users2 className="w-6 h-6" />
               </div>
               <h3 className="text-sm font-bold text-[#1E293B]">
-                {prestadores.length > 0
+                {safePrestadores.length > 0
                   ? 'Nenhum cadastro corresponde aos filtros'
                   : 'Nenhum prestador ou colaborador cadastrado'}
               </h3>
               <p className="text-xs text-[#64748B] max-w-md mx-auto">
-                {prestadores.length > 0
-                  ? `Existem ${prestadores.length} ${
-                      prestadores.length === 1 ? 'cadastro ativo' : 'cadastros ativos'
+                {safePrestadores.length > 0
+                  ? `Existem ${safePrestadores.length} ${
+                      safePrestadores.length === 1 ? 'cadastro ativo' : 'cadastros ativos'
                     }, mas a busca ou filtro de vínculo estão ocultando os registros.`
                   : 'Cadastre profissionais PJ (médicos, empresas parceiras) ou colaboradores CLT para vincular ao Termo de Parceria e gerar faturamentos mensais.'}
               </p>
               <div className="flex items-center justify-center gap-2 flex-wrap pt-1">
-                {prestadores.length > 0 && (search || tipoFilter !== 'todos') && (
+                {safePrestadores.length > 0 && (search || tipoFilter !== 'todos') && (
                   <Button
                     variant="outline"
                     onClick={() => {
@@ -284,7 +292,7 @@ export default function PrestadoresList() {
                   className="bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs font-semibold"
                 >
                   <Plus className="w-3.5 h-3.5 mr-1" />
-                  {prestadores.length > 0
+                  {safePrestadores.length > 0
                     ? 'Novo Cadastro'
                     : 'Cadastrar Primeiro Prestador/Colaborador'}
                 </Button>

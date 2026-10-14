@@ -192,34 +192,43 @@ export default function ProjetosList() {
     // 1. Ordem alfabética pelo nome da SECRETARIA (locale 'pt-BR', sensitivity 'accent').
     //    Projetos sem secretaria vão para o fim, de forma estável.
     // 2. DENTRO de cada secretaria, ordem alfabética pelo NOME DO PROJETO (pt-BR, sensitivity 'accent').
-    return list.sort((a, b) => {
-      const secA = (a?.expand?.secretaria_id?.nome || a?.parceiro || '').trim()
-      const secB = (b?.expand?.secretaria_id?.nome || b?.parceiro || '').trim()
+    return list.slice().sort((a, b) => {
+      const secA = String(a?.expand?.secretaria_id?.nome || a?.parceiro || '').trim()
+      const secB = String(b?.expand?.secretaria_id?.nome || b?.parceiro || '').trim()
 
       if (secA && !secB) return -1
       if (!secA && secB) return 1
 
       if (secA && secB) {
-        const secCompare = secA.localeCompare(secB, 'pt-BR', {
-          sensitivity: 'accent',
-          usage: 'sort',
-        })
-        if (secCompare !== 0) {
-          return secCompare
+        try {
+          const secCompare = secA.localeCompare(secB, 'pt-BR', {
+            sensitivity: 'accent',
+            usage: 'sort',
+          })
+          if (secCompare !== 0) {
+            return secCompare
+          }
+        } catch {
+          if (secA < secB) return -1
+          if (secA > secB) return 1
         }
       }
 
-      const nomeA = (a?.nome || '').trim()
-      const nomeB = (b?.nome || '').trim()
+      const nomeA = String(a?.nome || '').trim()
+      const nomeB = String(b?.nome || '').trim()
 
       if (!nomeA && !nomeB) return 0
       if (!nomeA) return 1
       if (!nomeB) return -1
 
-      return nomeA.localeCompare(nomeB, 'pt-BR', {
-        sensitivity: 'accent',
-        usage: 'sort',
-      })
+      try {
+        return nomeA.localeCompare(nomeB, 'pt-BR', {
+          sensitivity: 'accent',
+          usage: 'sort',
+        })
+      } catch {
+        return nomeA < nomeB ? -1 : nomeA > nomeB ? 1 : 0
+      }
     })
   }, [projetos, search, statusFilter])
 

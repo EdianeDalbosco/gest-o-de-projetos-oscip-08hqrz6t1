@@ -160,13 +160,25 @@ export default function ContratosList() {
               value="CLT"
               className="text-xs font-semibold px-6 data-[state=active]:bg-[#1FAF7A] data-[state=active]:text-white"
             >
-              Colaboradores CLT ({contratos.filter((c) => c.tipo === 'CLT').length})
+              Colaboradores CLT (
+              {
+                (Array.isArray(contratos) ? contratos : []).filter(
+                  (c) => (c?.tipo || '').toUpperCase().trim() === 'CLT',
+                ).length
+              }
+              )
             </TabsTrigger>
             <TabsTrigger
               value="PJ"
               className="text-xs font-semibold px-6 data-[state=active]:bg-[#1FAF7A] data-[state=active]:text-white"
             >
-              Prestadores PJ ({contratos.filter((c) => c.tipo === 'PJ').length})
+              Prestadores PJ (
+              {
+                (Array.isArray(contratos) ? contratos : []).filter(
+                  (c) => (c?.tipo || '').toUpperCase().trim() === 'PJ',
+                ).length
+              }
+              )
             </TabsTrigger>
           </TabsList>
 
@@ -200,23 +212,34 @@ export default function ContratosList() {
         <TabsContent value="CLT">
           <Card className="border-[#E2E8F0] shadow-sm overflow-hidden">
             <CardContent className="p-0">
-              {filteredContratos.length === 0 ? (
+              {loading ? (
+                <div className="py-20 text-center flex flex-col items-center justify-center gap-2">
+                  <div className="w-8 h-8 border-2 border-[#1FAF7A] border-t-transparent rounded-full animate-spin" />
+                  <p className="text-xs text-[#64748B]">Carregando colaboradores CLT...</p>
+                </div>
+              ) : filteredContratos.length === 0 ? (
                 <div className="text-center py-16 px-4 space-y-3">
                   <div className="w-12 h-12 rounded-full bg-emerald-50 text-[#1FAF7A] flex items-center justify-center mx-auto">
                     <Users2 className="w-6 h-6" />
                   </div>
                   <h3 className="text-sm font-bold text-[#1E293B]">
-                    {contratos.filter((c) => c.tipo === 'CLT').length > 0
+                    {(Array.isArray(contratos) ? contratos : []).filter(
+                      (c) => (c?.tipo || '').toUpperCase().trim() === 'CLT',
+                    ).length > 0
                       ? 'Nenhum colaborador CLT corresponde aos filtros'
                       : 'Nenhum colaborador CLT cadastrado'}
                   </h3>
                   <p className="text-xs text-[#64748B] max-w-sm mx-auto">
-                    {contratos.filter((c) => c.tipo === 'CLT').length > 0
+                    {(Array.isArray(contratos) ? contratos : []).filter(
+                      (c) => (c?.tipo || '').toUpperCase().trim() === 'CLT',
+                    ).length > 0
                       ? 'Os filtros ativos estão ocultando os colaboradores CLT existentes.'
                       : 'Cadastre os profissionais em regime CLT vinculados aos planos de trabalho e projetos da entidade.'}
                   </p>
                   <div className="flex items-center justify-center gap-2 flex-wrap pt-1">
-                    {contratos.filter((c) => c.tipo === 'CLT').length > 0 &&
+                    {(Array.isArray(contratos) ? contratos : []).filter(
+                      (c) => (c?.tipo || '').toUpperCase().trim() === 'CLT',
+                    ).length > 0 &&
                       (search || statusFilter !== 'todos') && (
                         <Button
                           size="sm"
@@ -331,23 +354,34 @@ export default function ContratosList() {
         <TabsContent value="PJ">
           <Card className="border-[#E2E8F0] shadow-sm overflow-hidden">
             <CardContent className="p-0">
-              {filteredContratos.length === 0 ? (
+              {loading ? (
+                <div className="py-20 text-center flex flex-col items-center justify-center gap-2">
+                  <div className="w-8 h-8 border-2 border-[#1FAF7A] border-t-transparent rounded-full animate-spin" />
+                  <p className="text-xs text-[#64748B]">Carregando prestadores PJ...</p>
+                </div>
+              ) : filteredContratos.length === 0 ? (
                 <div className="text-center py-16 px-4 space-y-3">
                   <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
                     <Briefcase className="w-6 h-6" />
                   </div>
                   <h3 className="text-sm font-bold text-[#1E293B]">
-                    {contratos.filter((c) => c.tipo === 'PJ').length > 0
+                    {(Array.isArray(contratos) ? contratos : []).filter(
+                      (c) => (c?.tipo || '').toUpperCase().trim() === 'PJ',
+                    ).length > 0
                       ? 'Nenhum prestador PJ corresponde aos filtros'
                       : 'Nenhum prestador PJ cadastrado'}
                   </h3>
                   <p className="text-xs text-[#64748B] max-w-sm mx-auto">
-                    {contratos.filter((c) => c.tipo === 'PJ').length > 0
+                    {(Array.isArray(contratos) ? contratos : []).filter(
+                      (c) => (c?.tipo || '').toUpperCase().trim() === 'PJ',
+                    ).length > 0
                       ? 'Os filtros ativos estão ocultando os prestadores PJ existentes.'
                       : 'Cadastre prestadores de serviço pessoa jurídica (médicos, instrutores, consultorias e assessorias técnicas).'}
                   </p>
                   <div className="flex items-center justify-center gap-2 flex-wrap pt-1">
-                    {contratos.filter((c) => c.tipo === 'PJ').length > 0 &&
+                    {(Array.isArray(contratos) ? contratos : []).filter(
+                      (c) => (c?.tipo || '').toUpperCase().trim() === 'PJ',
+                    ).length > 0 &&
                       (search || statusFilter !== 'todos') && (
                         <Button
                           size="sm"

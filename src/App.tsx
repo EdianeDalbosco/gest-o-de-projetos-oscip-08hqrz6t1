@@ -4,6 +4,7 @@ import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthProvider } from '@/context/AuthContext'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import Layout from '@/components/Layout'
 
 // Pages
@@ -47,29 +48,124 @@ const App = () => (
           {/* Protected Application Routes inside Layout */}
           <Route
             element={
-              <ProtectedRoute>
-                <Layout />
-              </ProtectedRoute>
+              <ErrorBoundary fallbackTitle="Falha geral na navegação do sistema">
+                <ProtectedRoute>
+                  <Layout />
+                </ProtectedRoute>
+              </ErrorBoundary>
             }
           >
-            <Route path="/" element={<Index />} />
-            <Route path="/projetos" element={<ProjetosList />} />
-            <Route path="/projetos/:id" element={<ProjetoDetail />} />
-            <Route path="/solicitacoes" element={<SolicitacoesList />} />
-            <Route path="/convenios" element={<ConveniosList />} />
-            <Route path="/convenios/:id" element={<ConvenioDetail />} />
-            <Route path="/faturamento" element={<Faturamento />} />
-            <Route path="/financeiro" element={<GestaoFinanceira />} />
-            <Route path="/prestadores" element={<PrestadoresList />} />
-            <Route path="/contratos" element={<ContratosList />} />
-            <Route path="/contratos/:id" element={<ContratoDetail />} />
-            <Route path="/contratos/novo/elaborar" element={<ElaborarContrato />} />
-            <Route path="/atividades" element={<AtividadesList />} />
+            <Route
+              path="/"
+              element={
+                <ErrorBoundary fallbackTitle="Falha ao renderizar o Dashboard Geral">
+                  <Index />
+                </ErrorBoundary>
+              }
+            />
+            <Route
+              path="/projetos"
+              element={
+                <ErrorBoundary fallbackTitle="Falha ao renderizar a Lista de Projetos">
+                  <ProjetosList />
+                </ErrorBoundary>
+              }
+            />
+            <Route
+              path="/projetos/:id"
+              element={
+                <ErrorBoundary fallbackTitle="Falha ao renderizar os Detalhes do Projeto">
+                  <ProjetoDetail />
+                </ErrorBoundary>
+              }
+            />
+            <Route
+              path="/solicitacoes"
+              element={
+                <ErrorBoundary fallbackTitle="Falha ao renderizar a Lista de Solicitações">
+                  <SolicitacoesList />
+                </ErrorBoundary>
+              }
+            />
+            <Route
+              path="/convenios"
+              element={
+                <ErrorBoundary fallbackTitle="Falha ao renderizar os Instrumentos Municipais">
+                  <ConveniosList />
+                </ErrorBoundary>
+              }
+            />
+            <Route
+              path="/convenios/:id"
+              element={
+                <ErrorBoundary fallbackTitle="Falha ao renderizar os Detalhes do Instrumento">
+                  <ConvenioDetail />
+                </ErrorBoundary>
+              }
+            />
+            <Route
+              path="/faturamento"
+              element={
+                <ErrorBoundary fallbackTitle="Falha ao renderizar a tela de Faturamento">
+                  <Faturamento />
+                </ErrorBoundary>
+              }
+            />
+            <Route
+              path="/financeiro"
+              element={
+                <ErrorBoundary fallbackTitle="Falha ao renderizar Gestão Financeira">
+                  <GestaoFinanceira />
+                </ErrorBoundary>
+              }
+            />
+            <Route
+              path="/prestadores"
+              element={
+                <ErrorBoundary fallbackTitle="Falha ao renderizar Prestadores e Colaboradores">
+                  <PrestadoresList />
+                </ErrorBoundary>
+              }
+            />
+            <Route
+              path="/contratos"
+              element={
+                <ErrorBoundary fallbackTitle="Falha ao renderizar a Lista de Contratos">
+                  <ContratosList />
+                </ErrorBoundary>
+              }
+            />
+            <Route
+              path="/contratos/:id"
+              element={
+                <ErrorBoundary fallbackTitle="Falha ao renderizar os Detalhes do Contrato">
+                  <ContratoDetail />
+                </ErrorBoundary>
+              }
+            />
+            <Route
+              path="/contratos/novo/elaborar"
+              element={
+                <ErrorBoundary fallbackTitle="Falha ao elaborar contrato">
+                  <ElaborarContrato />
+                </ErrorBoundary>
+              }
+            />
+            <Route
+              path="/atividades"
+              element={
+                <ErrorBoundary fallbackTitle="Falha ao renderizar a Lista de Atividades">
+                  <AtividadesList />
+                </ErrorBoundary>
+              }
+            />
             <Route
               path="/configuracao-organizacao"
               element={
                 <ProtectedRoute minRole="gestor">
-                  <ConfiguracaoOrganizacao />
+                  <ErrorBoundary fallbackTitle="Falha ao renderizar Configuração da Organização">
+                    <ConfiguracaoOrganizacao />
+                  </ErrorBoundary>
                 </ProtectedRoute>
               }
             />
@@ -77,7 +173,9 @@ const App = () => (
               path="/usuarios"
               element={
                 <ProtectedRoute minRole="admin">
-                  <UsuariosList />
+                  <ErrorBoundary fallbackTitle="Falha ao renderizar Gestão de Usuários">
+                    <UsuariosList />
+                  </ErrorBoundary>
                 </ProtectedRoute>
               }
             />
