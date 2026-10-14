@@ -39,11 +39,17 @@ export default function ContratosList() {
   const [editingContrato, setEditingContrato] = useState<ContratoRecord | null>(null)
   const [loading, setLoading] = useState(true)
 
+  const requestIdRef = React.useRef(0)
+
   const fetchContratos = async () => {
+    const currentRequestId = ++requestIdRef.current
     try {
       const data = await getContratos()
-      setContratos(data)
+      if (currentRequestId === requestIdRef.current) {
+        setContratos(Array.isArray(data) ? data : [])
+      }
     } catch (e) {
+      if (currentRequestId !== requestIdRef.current) return
       console.error('Erro ao buscar contratos:', e)
       toast({
         title: 'Erro ao carregar contratos',
@@ -51,23 +57,59 @@ export default function ContratosList() {
         variant: 'destructive',
       })
     } finally {
-      setLoading(false)
+      if (currentRequestId === requestIdRef.current) {
+        setLoading(false)
+      }
     }
   }
 
-  useEffect(() => {
-    fetchContratos()
+  // Debounce realtime
+  const realtimeTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  const scheduleFetchContratos = React.useCallback(() => {
+    if (realtimeTimeoutRef.current) {
+      clearTimeout(realtimeTimeoutRef.current)
+    }
+    realtimeTimeoutRef.current = setTimeout(() => {
+      fetchContratos()
+    }, 150)
   }, [])
 
-  useRealtime('contratos', () => fetchContratos())
+  useEffect(() => {
+    fetchContratos()
+    return () => {
+      if (realtimeTimeoutRef.current) {
+        clearTimeout(realtimeTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  useRealtime('contratos', scheduleFetchContratos)
 
   const filteredContratos = useMemo(() => {
+    if (!Array.isArray(contratos)) return []
+    const q = (search || '').toLowerCase().trim()
+    const filterNorm = (statusFilter || 'todos').toLowerCase().trim()
+    const tabNorm = (activeTab || 'CLT').toUpperCase().trim()
+
     return contratos.filter((c) => {
-      const matchType = c.tipo === activeTab
-      const matchSearch =
-        c.nome.toLowerCase().includes(search.toLowerCase()) ||
-        c.cargo_funcao.toLowerCase().includes(search.toLowerCase())
-      const matchStatus = statusFilter === 'todos' || c.status === statusFilter
+      if (!c) return false
+      const cTipo = (c.tipo || '').toUpperCase().trim()
+      const matchType = cTipo === tabNorm
+
+      const nome = (c.nome || '').toLowerCase()
+      const cargo = (c.cargo_funcao || '').toLowerCase()
+      const matchSearch = !q || nome.includes(q) || cargo.includes(q)
+
+      const cStatus = (c.status || '').toLowerCase().trim()
+      let matchStatus = false
+      if (filterNorm === 'todos') {
+        matchStatus = true
+      } else if (filterNorm === 'ativo') {
+        matchStatus = cStatus === 'ativo' || cStatus === 'em_andamento'
+      } else {
+        matchStatus = cStatus === filterNorm
+      }
+
       return matchType && matchSearch && matchStatus
     })
   }, [contratos, activeTab, search, statusFilter])

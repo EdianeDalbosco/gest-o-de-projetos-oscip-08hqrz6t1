@@ -160,7 +160,12 @@ export default function SolicitacoesList() {
     fetchData()
   }, [])
 
+  // Guard de requisições concorrentes
+  const [requestId, setRequestId] = useState(0)
+
   const fetchData = async () => {
+    const currentId = requestId + 1
+    setRequestId(currentId)
     try {
       setLoading(true)
       const results = await Promise.allSettled([
@@ -173,7 +178,7 @@ export default function SolicitacoesList() {
       const [sRes, pRes, cfgRes, uRes] = results
 
       if (sRes.status === 'fulfilled') {
-        setSolicitacoes(sRes.value)
+        setSolicitacoes(Array.isArray(sRes.value) ? sRes.value : [])
       } else {
         console.error('Erro ao buscar solicitacoes:', sRes.reason)
         toast({
@@ -184,7 +189,7 @@ export default function SolicitacoesList() {
       }
 
       if (pRes.status === 'fulfilled') {
-        setProjetos(pRes.value)
+        setProjetos(Array.isArray(pRes.value) ? pRes.value : [])
       } else {
         console.error('Erro ao buscar projetos para solicitações:', pRes.reason)
       }
@@ -196,7 +201,7 @@ export default function SolicitacoesList() {
       }
 
       if (uRes.status === 'fulfilled') {
-        setUsuarios(uRes.value)
+        setUsuarios(Array.isArray(uRes.value) ? uRes.value : [])
       } else {
         console.error('Erro ao buscar usuários:', uRes.reason)
       }
@@ -255,36 +260,65 @@ export default function SolicitacoesList() {
 
   // Filtragem e ordenação (Urgentes e atrasadas primeiro)
   const filteredSolicitacoes = useMemo(() => {
-    const q = busca.toLowerCase().trim()
+    if (!Array.isArray(solicitacoes)) return []
+    const q = (busca || '').toLowerCase().trim()
+    const statusNorm = (filtroStatus || 'todos').toLowerCase().trim()
+    const prioridadeNorm = (filtroPrioridade || 'todas').toLowerCase().trim()
+    const tipoNorm = (filtroTipo || 'todos').toLowerCase().trim()
+    const respNorm = (filtroResponsavel || 'todos').toLowerCase().trim()
 
     const list = solicitacoes.filter((s) => {
-      if (filtroStatus !== 'todos' && s.status !== filtroStatus) return false
-      if (filtroPrioridade !== 'todas' && s.prioridade !== filtroPrioridade) return false
-      if (filtroTipo !== 'todos' && s.tipo !== filtroTipo) return false
+      if (!s) return false
+
+      const sStatus = (s.status || '').toLowerCase().trim()
+      if (statusNorm !== 'todos') {
+        if (sStatus !== statusNorm) return false
+      }
+
+      const sPrioridade = (s.prioridade || '').toLowerCase().trim()
+      if (prioridadeNorm !== 'todas') {
+        if (sPrioridade !== prioridadeNorm) return false
+      }
+
+      const sTipo = (s.tipo || '').toLowerCase().trim()
+      if (tipoNorm !== 'todos') {
+        if (sTipo !== tipoNorm) return false
+      }
+
       if (filtroProjeto !== 'todos') {
         if (filtroProjeto === 'geral' && s.projeto) return false
         if (filtroProjeto !== 'geral' && s.projeto !== filtroProjeto) return false
       }
 
       const nomeResp = getNomeResponsavel(s.responsavel)
+      const nomeRespLower = nomeResp.toLowerCase().trim()
 
-      if (filtroResponsavel !== 'todos') {
-        if (filtroResponsavel === 'sem_responsavel') {
-          if (nomeResp.trim()) return false
-        } else if (nomeResp.toLowerCase() !== filtroResponsavel.toLowerCase()) {
+      if (respNorm !== 'todos') {
+        if (respNorm === 'sem_responsavel') {
+          if (nomeRespLower) return false
+        } else if (nomeRespLower !== respNorm) {
           return false
         }
       }
 
       if (q) {
-        const matchesTitulo = s.titulo.toLowerCase().includes(q)
+        const matchesTitulo = (s.titulo || '').toLowerCase().includes(q)
         const matchesDesc = (s.descricao || '').toLowerCase().includes(q)
         const matchesResp =
-          (s.responsavel || '').toLowerCase().includes(q) || nomeResp.toLowerCase().includes(q)
+          (s.responsavel || '').toLowerCase().includes(q) || nomeRespLower.includes(q)
         const matchesSolicitante = (s.solicitante || '').toLowerCase().includes(q)
         const matchesProj = (s.expand?.projeto?.nome || '').toLowerCase().includes(q)
-        if (!matchesTitulo && !matchesDesc && !matchesResp && !matchesSolicitante && !matchesProj)
+        const matchesSec = (s.expand?.secretaria?.nome || '').toLowerCase().includes(q)
+        if (
+          !matchesTitulo &&
+          !matchesDesc &&
+          !matchesResp &&
+          !matchesSolicitante &&
+          !matchesProj &&
+          !matchesSec
+        ) {
           return false
+        }
       }
 
       return true
@@ -336,26 +370,35 @@ export default function SolicitacoesList() {
 
   // KPIs
   const totalAbertas = useMemo(() => {
-    return solicitacoes.filter((s) => s.status !== 'Concluída' && s.status !== 'Cancelada').length
+    const safe = Array.isArray(solicitacoes) ? solicitacoes : []
+    return safe.filter((s) => {
+      const st = (s?.status || '').toLowerCase()
+      return st !== 'concluída' && st !== 'concluida' && st !== 'cancelada'
+    }).length
   }, [solicitacoes])
 
   const totalEmAndamento = useMemo(() => {
-    return solicitacoes.filter((s) => s.status === 'Em Andamento').length
+    const safe = Array.isArray(solicitacoes) ? solicitacoes : []
+    return safe.filter((s) => (s?.status || '').toLowerCase() === 'em andamento').length
   }, [solicitacoes])
 
   const totalUrgentesAtraso = useMemo(() => {
-    return solicitacoes.filter(
-      (s) => isAtrasada(s) && (s.prioridade === 'Urgente' || s.prioridade === 'Alta'),
-    ).length
+    const safe = Array.isArray(solicitacoes) ? solicitacoes : []
+    return safe.filter((s) => {
+      const prio = (s?.prioridade || '').toLowerCase()
+      return isAtrasada(s) && (prio === 'urgente' || prio === 'alta')
+    }).length
   }, [solicitacoes])
 
   const totalConcluidasMes = useMemo(() => {
     const agora = new Date()
     const mesAtual = agora.getMonth()
     const anoAtual = agora.getFullYear()
+    const safe = Array.isArray(solicitacoes) ? solicitacoes : []
 
-    return solicitacoes.filter((s) => {
-      if (s.status !== 'Concluída') return false
+    return safe.filter((s) => {
+      const st = (s?.status || '').toLowerCase()
+      if (st !== 'concluída' && st !== 'concluida') return false
       const dt = new Date(s.updated || s.created)
       return dt.getMonth() === mesAtual && dt.getFullYear() === anoAtual
     }).length
@@ -1119,7 +1162,10 @@ export default function SolicitacoesList() {
         /* VISUALIZAÇÃO B: QUADRO KANBAN ARRASTÁVEL COM HTML5 NATIVO */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 items-start">
           {KANBAN_COLUMNS.map((col) => {
-            const colItems = filteredSolicitacoes.filter((s) => s.status === col.status)
+            const colStatusNorm = col.status.toLowerCase().trim()
+            const colItems = filteredSolicitacoes.filter(
+              (s) => (s.status || '').toLowerCase().trim() === colStatusNorm,
+            )
             const isTarget = dragOverCol === col.status
 
             return (

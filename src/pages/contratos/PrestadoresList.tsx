@@ -38,11 +38,17 @@ export default function PrestadoresList() {
   const [prestadorToEdit, setPrestadorToEdit] = useState<PrestadorColaboradorRecord | null>(null)
   const [loading, setLoading] = useState(true)
 
+  const requestIdRef = React.useRef(0)
+
   const fetchData = async () => {
+    const currentRequestId = ++requestIdRef.current
     try {
       const data = await getPrestadoresColaboradores()
-      setPrestadores(data)
+      if (currentRequestId === requestIdRef.current) {
+        setPrestadores(Array.isArray(data) ? data : [])
+      }
     } catch (e) {
+      if (currentRequestId !== requestIdRef.current) return
       console.error('Erro ao carregar prestadores/colaboradores:', e)
       toast({
         title: 'Erro ao carregar cadastros',
@@ -50,31 +56,63 @@ export default function PrestadoresList() {
         variant: 'destructive',
       })
     } finally {
-      setLoading(false)
+      if (currentRequestId === requestIdRef.current) {
+        setLoading(false)
+      }
     }
   }
 
-  useEffect(() => {
-    fetchData()
+  // Debounce realtime
+  const realtimeTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  const scheduleFetchData = React.useCallback(() => {
+    if (realtimeTimeoutRef.current) {
+      clearTimeout(realtimeTimeoutRef.current)
+    }
+    realtimeTimeoutRef.current = setTimeout(() => {
+      fetchData()
+    }, 150)
   }, [])
 
-  useRealtime('prestadores_colaboradores', () => fetchData())
+  useEffect(() => {
+    fetchData()
+    return () => {
+      if (realtimeTimeoutRef.current) {
+        clearTimeout(realtimeTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  useRealtime('prestadores_colaboradores', scheduleFetchData)
 
   const filtered = useMemo(() => {
-    return prestadores.filter((p) => {
-      const q = search.toLowerCase()
-      const matchSearch =
-        (p.tipo === 'PJ' &&
-          ((p.razao_social && p.razao_social.toLowerCase().includes(q)) ||
-            (p.cnpj && p.cnpj.toLowerCase().includes(q)) ||
-            (p.profissional && p.profissional.toLowerCase().includes(q)) ||
-            (p.cargo && p.cargo.toLowerCase().includes(q)))) ||
-        (p.tipo === 'CLT' &&
-          ((p.nome_colaborador && p.nome_colaborador.toLowerCase().includes(q)) ||
-            (p.cpf_colaborador && p.cpf_colaborador.toLowerCase().includes(q)) ||
-            (p.cargo && p.cargo.toLowerCase().includes(q))))
+    if (!Array.isArray(prestadores)) return []
+    const q = (search || '').toLowerCase().trim()
+    const filterTipoNorm = (tipoFilter || 'todos').toUpperCase().trim()
 
-      const matchTipo = tipoFilter === 'todos' || p.tipo === tipoFilter
+    return prestadores.filter((p) => {
+      if (!p) return false
+      const pTipo = (p.tipo || '').toUpperCase().trim()
+
+      const matchTipo = filterTipoNorm === 'TODOS' || pTipo === filterTipoNorm
+
+      const razaoSocial = (p.razao_social || '').toLowerCase()
+      const cnpj = (p.cnpj || '').toLowerCase()
+      const profissional = (p.profissional || '').toLowerCase()
+      const cargo = (p.cargo || '').toLowerCase()
+      const nomeColaborador = (p.nome_colaborador || '').toLowerCase()
+      const cpfColaborador = (p.cpf_colaborador || '').toLowerCase()
+      const setor = (p.setor || '').toLowerCase()
+
+      const matchSearch =
+        !q ||
+        razaoSocial.includes(q) ||
+        cnpj.includes(q) ||
+        profissional.includes(q) ||
+        cargo.includes(q) ||
+        nomeColaborador.includes(q) ||
+        cpfColaborador.includes(q) ||
+        setor.includes(q)
+
       return matchSearch && matchTipo
     })
   }, [prestadores, search, tipoFilter])

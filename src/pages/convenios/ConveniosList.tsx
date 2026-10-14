@@ -56,7 +56,11 @@ export default function ConveniosList() {
   const [editingConvenio, setEditingConvenio] = useState<ConvenioRecord | null>(null)
   const [loading, setLoading] = useState(true)
 
+  // Guard de requisições concorrentes: garante que respostas obsoletas não sobrescrevam dados recentes
+  const requestIdRef = React.useRef(0)
+
   const fetchData = async () => {
+    const currentRequestId = ++requestIdRef.current
     try {
       const results = await Promise.allSettled([
         getConvenios(),
@@ -66,34 +70,39 @@ export default function ConveniosList() {
         getEmpenhos(),
       ])
 
+      // Se outra requisição mais nova foi disparada neste intervalo, descarta esta resposta obsoleta
+      if (currentRequestId !== requestIdRef.current) {
+        return
+      }
+
       const [convRes, secRes, planRes, projRes, empRes] = results
 
       if (convRes.status === 'fulfilled') {
-        setConvenios(convRes.value)
+        setConvenios(Array.isArray(convRes.value) ? convRes.value : [])
       } else {
         console.error('Erro ao buscar convênios:', convRes.reason)
       }
 
       if (secRes.status === 'fulfilled') {
-        setSecretarias(secRes.value)
+        setSecretarias(Array.isArray(secRes.value) ? secRes.value : [])
       } else {
         console.error('Erro ao buscar secretarias:', secRes.reason)
       }
 
       if (planRes.status === 'fulfilled') {
-        setPlanos(planRes.value)
+        setPlanos(Array.isArray(planRes.value) ? planRes.value : [])
       } else {
         console.error('Erro ao buscar planos de trabalho:', planRes.reason)
       }
 
       if (projRes.status === 'fulfilled') {
-        setProjetos(projRes.value)
+        setProjetos(Array.isArray(projRes.value) ? projRes.value : [])
       } else {
         console.error('Erro ao buscar projetos:', projRes.reason)
       }
 
       if (empRes.status === 'fulfilled') {
-        setEmpenhos(empRes.value)
+        setEmpenhos(Array.isArray(empRes.value) ? empRes.value : [])
       } else {
         console.error('Erro ao buscar empenhos:', empRes.reason)
       }
@@ -108,6 +117,7 @@ export default function ConveniosList() {
         })
       }
     } catch (err) {
+      if (currentRequestId !== requestIdRef.current) return
       console.error('Erro inesperado em fetchData de ConveniosList:', err)
       toast({
         title: 'Erro ao carregar instrumentos',
@@ -115,9 +125,22 @@ export default function ConveniosList() {
         variant: 'destructive',
       })
     } finally {
-      setLoading(false)
+      if (currentRequestId === requestIdRef.current) {
+        setLoading(false)
+      }
     }
   }
+
+  // Debounce para notificações de realtime agregadas
+  const realtimeTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  const scheduleFetchData = React.useCallback(() => {
+    if (realtimeTimeoutRef.current) {
+      clearTimeout(realtimeTimeoutRef.current)
+    }
+    realtimeTimeoutRef.current = setTimeout(() => {
+      fetchData()
+    }, 150)
+  }, [])
 
   useEffect(() => {
     fetchData()
@@ -129,24 +152,50 @@ export default function ConveniosList() {
     window.addEventListener('open-modal-novo-convenio', handleOpenModal)
     return () => {
       window.removeEventListener('open-modal-novo-convenio', handleOpenModal)
+      if (realtimeTimeoutRef.current) {
+        clearTimeout(realtimeTimeoutRef.current)
+      }
     }
   }, [])
 
-  useRealtime('convenios', () => fetchData())
-  useRealtime('secretarias', () => fetchData())
-  useRealtime('planos_trabalho', () => fetchData())
-  useRealtime('projetos', () => fetchData())
-  useRealtime('empenhos', () => fetchData())
+  useRealtime('convenios', scheduleFetchData)
+  useRealtime('secretarias', scheduleFetchData)
+  useRealtime('planos_trabalho', scheduleFetchData)
+  useRealtime('projetos', scheduleFetchData)
+  useRealtime('empenhos', scheduleFetchData)
 
   const filteredConvenios = useMemo(() => {
+    if (!Array.isArray(convenios)) return []
+    const q = (search || '').toLowerCase().trim()
+    const filterNorm = (statusFilter || 'todos').toLowerCase().trim()
+
     return convenios.filter((c) => {
-      const q = search.toLowerCase()
+      if (!c) return false
+      const nome = (c.nome || '').toLowerCase()
+      const municipio = (c.municipio || '').toLowerCase()
+      const numInst = (c.numero_instrumento || '').toLowerCase()
+      const orgao = (c.orgao_contratante || '').toLowerCase()
+      const obs = (c.observacoes || '').toLowerCase()
+
       const matchesSearch =
-        c.nome.toLowerCase().includes(q) ||
-        c.municipio.toLowerCase().includes(q) ||
-        c.numero_instrumento.toLowerCase().includes(q) ||
-        (c.orgao_contratante && c.orgao_contratante.toLowerCase().includes(q))
-      const matchesStatus = statusFilter === 'todos' || c.status === statusFilter
+        !q ||
+        nome.includes(q) ||
+        municipio.includes(q) ||
+        numInst.includes(q) ||
+        orgao.includes(q) ||
+        obs.includes(q)
+
+      const cStatus = (c.status || '').toLowerCase().trim()
+      let matchesStatus = false
+
+      if (filterNorm === 'todos') {
+        matchesStatus = true
+      } else if (filterNorm === 'ativo') {
+        matchesStatus = cStatus === 'ativo' || cStatus === 'em_andamento'
+      } else {
+        matchesStatus = cStatus === filterNorm
+      }
+
       return matchesSearch && matchesStatus
     })
   }, [convenios, search, statusFilter])
@@ -169,13 +218,21 @@ export default function ConveniosList() {
 
   // Agregações financeiras globais dos convênios
   const statsGerais = useMemo(() => {
-    const totalGlobal = convenios.reduce((s, c) => s + (Number(c.valor_global) || 0), 0)
-    const totalProjetos = projetos.reduce((s, p) => s + (Number(p.valor_total) || 0), 0)
-    const totalPrevistoPlanos = planos.reduce((s, p) => s + (Number(p.valor_previsto) || 0), 0)
+    const safeConvenios = Array.isArray(convenios) ? convenios : []
+    const safeProjetos = Array.isArray(projetos) ? projetos : []
+    const safePlanos = Array.isArray(planos) ? planos : []
+    const safeEmpenhos = Array.isArray(empenhos) ? empenhos : []
+
+    const totalGlobal = safeConvenios.reduce((s, c) => s + (Number(c?.valor_global) || 0), 0)
+    const totalProjetos = safeProjetos.reduce((s, p) => s + (Number(p?.valor_total) || 0), 0)
+    const totalPrevistoPlanos = safePlanos.reduce((s, p) => s + (Number(p?.valor_previsto) || 0), 0)
     const totalOrcado = totalProjetos > 0 ? totalProjetos : totalPrevistoPlanos
 
-    const totalEmpenhado = empenhos.reduce((s, e) => s + (Number(e.valor) || 0), 0)
-    const totalExecutadoPlanos = planos.reduce((s, p) => s + (Number(p.valor_executado) || 0), 0)
+    const totalEmpenhado = safeEmpenhos.reduce((s, e) => s + (Number(e?.valor) || 0), 0)
+    const totalExecutadoPlanos = safePlanos.reduce(
+      (s, p) => s + (Number(p?.valor_executado) || 0),
+      0,
+    )
     const totalExecutado = totalEmpenhado > 0 ? totalEmpenhado : totalExecutadoPlanos
 
     // Alocação orçamentária geral (orçado vs global)
@@ -239,10 +296,15 @@ export default function ConveniosList() {
             <Landmark className="w-4 h-4 text-[#1FAF7A]" />
           </div>
           <p className="text-2xl font-bold text-[#1E293B] mt-2 tabular-nums">
-            {convenios.filter((c) => c.status === 'ativo').length}
+            {
+              (Array.isArray(convenios) ? convenios : []).filter((c) => {
+                const st = (c?.status || '').toLowerCase()
+                return st === 'ativo' || st === 'em_andamento'
+              }).length
+            }
           </p>
           <span className="text-[11px] text-[#94A3B8] mt-1 block">
-            {convenios.length} cadastrados no total
+            {(Array.isArray(convenios) ? convenios : []).length} cadastrados no total
           </span>
         </div>
 
@@ -381,21 +443,28 @@ export default function ConveniosList() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredConvenios.map((conv) => {
             // Secretarias deste convênio
-            const convSecs = secretarias.filter((s) => s.convenio_id === conv.id)
+            const safeSecs = Array.isArray(secretarias) ? secretarias : []
+            const convSecs = safeSecs.filter((s) => s?.convenio_id === conv.id)
             const secIds = new Set(convSecs.map((s) => s.id))
 
             // Projetos deste convênio (ou via convenio_id ou via secretarias)
-            const convProjs = projetos.filter(
-              (p) => p.convenio_id === conv.id || (p.secretaria_id && secIds.has(p.secretaria_id)),
+            const safeProjs = Array.isArray(projetos) ? projetos : []
+            const convProjs = safeProjs.filter(
+              (p) =>
+                p?.convenio_id === conv.id || (p?.secretaria_id && secIds.has(p.secretaria_id)),
             )
 
             // Planos deste convênio (ou via convenio_id ou via secretaria)
-            const convPlanos = planos.filter(
-              (p) => p.convenio_id === conv.id || secIds.has(p.secretaria_id),
+            const safePlanos = Array.isArray(planos) ? planos : []
+            const convPlanos = safePlanos.filter(
+              (p) =>
+                p?.convenio_id === conv.id || (p?.secretaria_id && secIds.has(p.secretaria_id)),
             )
 
-            const convEmpenhos = empenhos.filter(
-              (e) => e.convenio_id === conv.id || (e.secretaria_id && secIds.has(e.secretaria_id)),
+            const safeEmpenhos = Array.isArray(empenhos) ? empenhos : []
+            const convEmpenhos = safeEmpenhos.filter(
+              (e) =>
+                e?.convenio_id === conv.id || (e?.secretaria_id && secIds.has(e.secretaria_id)),
             )
 
             const totalOrcadoProjetos = convProjs.reduce(

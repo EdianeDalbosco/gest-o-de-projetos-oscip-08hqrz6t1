@@ -40,26 +40,32 @@ export default function AtividadesList() {
   const [modalOpen, setModalOpen] = useState(false)
   const [loading, setLoading] = useState(true)
 
+  const requestIdRef = React.useRef(0)
+
   const fetchData = async () => {
+    const currentRequestId = ++requestIdRef.current
     try {
       const results = await Promise.allSettled([getAtividades(), getProjetos(), getContratos()])
+
+      if (currentRequestId !== requestIdRef.current) return
 
       const [ativRes, projRes, contRes] = results
 
       if (ativRes.status === 'fulfilled') {
-        setAtividades(ativRes.value)
+        setAtividades(Array.isArray(ativRes.value) ? ativRes.value : [])
       } else {
         console.error('Erro ao buscar atividades:', ativRes.reason)
       }
 
       if (projRes.status === 'fulfilled') {
-        setProjetos(projRes.value)
+        setProjetos(Array.isArray(projRes.value) ? projRes.value : [])
       } else {
         console.error('Erro ao buscar projetos:', projRes.reason)
       }
 
       if (contRes.status === 'fulfilled') {
-        setPrestadores(contRes.value.filter((c) => c.tipo === 'PJ'))
+        const contList = Array.isArray(contRes.value) ? contRes.value : []
+        setPrestadores(contList.filter((c) => c?.tipo === 'PJ'))
       } else {
         console.error('Erro ao buscar contratos/prestadores:', contRes.reason)
       }
@@ -72,6 +78,7 @@ export default function AtividadesList() {
         })
       }
     } catch (e) {
+      if (currentRequestId !== requestIdRef.current) return
       console.error('Erro inesperado em AtividadesList:', e)
       toast({
         title: 'Erro ao carregar atividades',
@@ -79,26 +86,49 @@ export default function AtividadesList() {
         variant: 'destructive',
       })
     } finally {
-      setLoading(false)
+      if (currentRequestId === requestIdRef.current) {
+        setLoading(false)
+      }
     }
   }
 
-  useEffect(() => {
-    fetchData()
+  // Debounce realtime
+  const realtimeTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  const scheduleFetchData = React.useCallback(() => {
+    if (realtimeTimeoutRef.current) {
+      clearTimeout(realtimeTimeoutRef.current)
+    }
+    realtimeTimeoutRef.current = setTimeout(() => {
+      fetchData()
+    }, 150)
   }, [])
 
-  useRealtime('atividades', () => fetchData())
+  useEffect(() => {
+    fetchData()
+    return () => {
+      if (realtimeTimeoutRef.current) {
+        clearTimeout(realtimeTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  useRealtime('atividades', scheduleFetchData)
 
   const filteredAtividades = useMemo(() => {
-    return atividades.filter((a) => {
-      const matchSearch =
-        a.descricao.toLowerCase().includes(search.toLowerCase()) ||
-        (a.expand?.prestador_id?.nome &&
-          a.expand.prestador_id.nome.toLowerCase().includes(search.toLowerCase())) ||
-        (a.expand?.projeto_id?.nome &&
-          a.expand.projeto_id.nome.toLowerCase().includes(search.toLowerCase()))
+    if (!Array.isArray(atividades)) return []
+    const q = (search || '').toLowerCase().trim()
+    const filterStatusNorm = (statusFilter || 'todos').toLowerCase().trim()
 
-      const matchStatus = statusFilter === 'todos' || a.status === statusFilter
+    return atividades.filter((a) => {
+      if (!a) return false
+      const desc = (a.descricao || '').toLowerCase()
+      const prestNome = (a.expand?.prestador_id?.nome || '').toLowerCase()
+      const projNome = (a.expand?.projeto_id?.nome || '').toLowerCase()
+
+      const matchSearch = !q || desc.includes(q) || prestNome.includes(q) || projNome.includes(q)
+
+      const aStatus = (a.status || '').toLowerCase().trim()
+      const matchStatus = filterStatusNorm === 'todos' || aStatus === filterStatusNorm
       const matchPrestador = prestadorFilter === 'todos' || a.prestador_id === prestadorFilter
       const matchProjeto = projetoFilter === 'todos' || a.projeto_id === projetoFilter
 

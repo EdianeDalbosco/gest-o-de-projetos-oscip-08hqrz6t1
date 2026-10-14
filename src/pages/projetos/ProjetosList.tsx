@@ -68,11 +68,18 @@ export default function ProjetosList() {
   const [exportingExcel, setExportingExcel] = useState(false)
   const [printing, setPrinting] = useState(false)
 
+  // Guard de requisições concorrentes
+  const requestIdRef = React.useRef(0)
+
   const fetchProjetos = async () => {
+    const currentRequestId = ++requestIdRef.current
     try {
       const data = await getProjetos()
-      setProjetos(data)
+      if (currentRequestId === requestIdRef.current) {
+        setProjetos(Array.isArray(data) ? data : [])
+      }
     } catch (err) {
+      if (currentRequestId !== requestIdRef.current) return
       console.error('Erro ao carregar projetos:', err)
       toast({
         title: 'Erro ao carregar projetos',
@@ -80,9 +87,22 @@ export default function ProjetosList() {
         variant: 'destructive',
       })
     } finally {
-      setLoading(false)
+      if (currentRequestId === requestIdRef.current) {
+        setLoading(false)
+      }
     }
   }
+
+  // Debounce para realtime
+  const realtimeTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  const scheduleFetchProjetos = React.useCallback(() => {
+    if (realtimeTimeoutRef.current) {
+      clearTimeout(realtimeTimeoutRef.current)
+    }
+    realtimeTimeoutRef.current = setTimeout(() => {
+      fetchProjetos()
+    }, 150)
+  }, [])
 
   useEffect(() => {
     fetchProjetos()
@@ -97,6 +117,9 @@ export default function ProjetosList() {
     window.addEventListener('open-modal-novo-projeto', handleOpenModal)
     return () => {
       window.removeEventListener('open-modal-novo-projeto', handleOpenModal)
+      if (realtimeTimeoutRef.current) {
+        clearTimeout(realtimeTimeoutRef.current)
+      }
     }
   }, [])
 
@@ -126,26 +149,42 @@ export default function ProjetosList() {
     }
   }, [location.state, searchParams, setSearchParams])
 
-  useRealtime('projetos', () => fetchProjetos())
+  useRealtime('projetos', scheduleFetchProjetos)
 
   const filteredProjetos = useMemo(() => {
+    if (!Array.isArray(projetos)) return []
+
+    const searchLower = (search || '').toLowerCase().trim()
+    const filterNorm = (statusFilter || 'todos').toLowerCase().trim()
+
     const list = projetos.filter((p) => {
-      const secNome = p.expand?.secretaria_id?.nome || ''
-      const convNum = p.expand?.convenio_id?.numero_instrumento || ''
-      const searchLower = search.toLowerCase()
+      if (!p) return false
+      const pNome = (p.nome || '').toLowerCase()
+      const pDesc = (p.descricao || '').toLowerCase()
+      const pParceiro = (p.parceiro || '').toLowerCase()
+      const secNome = (p.expand?.secretaria_id?.nome || '').toLowerCase()
+      const convNum = (p.expand?.convenio_id?.numero_instrumento || '').toLowerCase()
 
       const matchesSearch =
-        p.nome.toLowerCase().includes(searchLower) ||
-        (p.parceiro && p.parceiro.toLowerCase().includes(searchLower)) ||
-        secNome.toLowerCase().includes(searchLower) ||
-        convNum.toLowerCase().includes(searchLower)
-      // Trata compatibilidade caso o registro venha como 'ativo' ou 'em_andamento'
-      const pStatus = p.status as string
-      const matchesStatus =
-        statusFilter === 'todos' ||
-        pStatus === statusFilter ||
-        (statusFilter === 'ativo' && pStatus === 'em_andamento') ||
-        (statusFilter === 'em_andamento' && (pStatus === 'ativo' || pStatus === 'em_andamento'))
+        !searchLower ||
+        pNome.includes(searchLower) ||
+        pDesc.includes(searchLower) ||
+        pParceiro.includes(searchLower) ||
+        secNome.includes(searchLower) ||
+        convNum.includes(searchLower)
+
+      // Normalização e tolerância de status case-insensitive
+      const pStatus = (p.status || '').toLowerCase().trim()
+      let matchesStatus = false
+
+      if (filterNorm === 'todos') {
+        matchesStatus = true
+      } else if (filterNorm === 'ativo' || filterNorm === 'em_andamento') {
+        matchesStatus = pStatus === 'ativo' || pStatus === 'em_andamento'
+      } else {
+        matchesStatus = pStatus === filterNorm
+      }
+
       return matchesSearch && matchesStatus
     })
 
@@ -154,8 +193,8 @@ export default function ProjetosList() {
     //    Projetos sem secretaria vão para o fim, de forma estável.
     // 2. DENTRO de cada secretaria, ordem alfabética pelo NOME DO PROJETO (pt-BR, sensitivity 'accent').
     return list.sort((a, b) => {
-      const secA = (a.expand?.secretaria_id?.nome || a.parceiro || '').trim()
-      const secB = (b.expand?.secretaria_id?.nome || b.parceiro || '').trim()
+      const secA = (a?.expand?.secretaria_id?.nome || a?.parceiro || '').trim()
+      const secB = (b?.expand?.secretaria_id?.nome || b?.parceiro || '').trim()
 
       if (secA && !secB) return -1
       if (!secA && secB) return 1
@@ -170,8 +209,8 @@ export default function ProjetosList() {
         }
       }
 
-      const nomeA = a.nome?.trim() || ''
-      const nomeB = b.nome?.trim() || ''
+      const nomeA = (a?.nome || '').trim()
+      const nomeB = (b?.nome || '').trim()
 
       if (!nomeA && !nomeB) return 0
       if (!nomeA) return 1
