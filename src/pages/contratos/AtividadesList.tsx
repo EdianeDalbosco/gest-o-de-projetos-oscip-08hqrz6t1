@@ -25,6 +25,7 @@ import { StatusBadge, formatBRL, formatDateBR } from '@/components/StatusBadge'
 import { ModalNovaAtividade } from '@/components/ModalNovaAtividade'
 import { getAtividades, updateAtividade, getProjetos, getContratos } from '@/services/api'
 import { useRealtime } from '@/hooks/use-realtime'
+import { toast } from '@/hooks/use-toast'
 import type { AtividadeRecord, ProjetoRecord, ContratoRecord } from '@/types'
 
 export default function AtividadesList() {
@@ -41,16 +42,42 @@ export default function AtividadesList() {
 
   const fetchData = async () => {
     try {
-      const [ativList, projList, contList] = await Promise.all([
-        getAtividades(),
-        getProjetos(),
-        getContratos(),
-      ])
-      setAtividades(ativList)
-      setProjetos(projList)
-      setPrestadores(contList.filter((c) => c.tipo === 'PJ'))
+      const results = await Promise.allSettled([getAtividades(), getProjetos(), getContratos()])
+
+      const [ativRes, projRes, contRes] = results
+
+      if (ativRes.status === 'fulfilled') {
+        setAtividades(ativRes.value)
+      } else {
+        console.error('Erro ao buscar atividades:', ativRes.reason)
+      }
+
+      if (projRes.status === 'fulfilled') {
+        setProjetos(projRes.value)
+      } else {
+        console.error('Erro ao buscar projetos:', projRes.reason)
+      }
+
+      if (contRes.status === 'fulfilled') {
+        setPrestadores(contRes.value.filter((c) => c.tipo === 'PJ'))
+      } else {
+        console.error('Erro ao buscar contratos/prestadores:', contRes.reason)
+      }
+
+      if (results.some((r) => r.status === 'rejected')) {
+        toast({
+          title: 'Aviso ao carregar dados',
+          description: 'Não foi possível carregar alguns registros de atividades.',
+          variant: 'destructive',
+        })
+      }
     } catch (e) {
-      console.error(e)
+      console.error('Erro inesperado em AtividadesList:', e)
+      toast({
+        title: 'Erro ao carregar atividades',
+        description: 'Não foi possível carregar a lista de atividades.',
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false)
     }
@@ -232,18 +259,46 @@ export default function AtividadesList() {
               <div className="w-12 h-12 rounded-full bg-emerald-50 text-[#1FAF7A] flex items-center justify-center mx-auto">
                 <CalendarCheck2 className="w-6 h-6" />
               </div>
-              <h3 className="text-sm font-bold text-[#1E293B]">Nenhuma atividade registrada</h3>
+              <h3 className="text-sm font-bold text-[#1E293B]">
+                {atividades.length > 0
+                  ? 'Nenhuma atividade corresponde aos filtros'
+                  : 'Nenhuma atividade registrada'}
+              </h3>
               <p className="text-xs text-[#64748B] max-w-sm mx-auto">
-                Lance as horas trabalhadas e entregas dos prestadores PJ para aprovação da
-                coordenação e cálculo de faturamento.
+                {atividades.length > 0
+                  ? `Existem ${atividades.length} ${
+                      atividades.length === 1 ? 'atividade registrada' : 'atividades registradas'
+                    }, mas os filtros ativos estão ocultando os itens.`
+                  : 'Lance as horas trabalhadas e entregas dos prestadores PJ para aprovação da coordenação e cálculo de faturamento.'}
               </p>
-              <Button
-                onClick={() => setModalOpen(true)}
-                className="bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs font-semibold"
-              >
-                <Plus className="w-3.5 h-3.5 mr-1" />
-                Registrar Primeira Atividade
-              </Button>
+              <div className="flex items-center justify-center gap-2 flex-wrap pt-1">
+                {atividades.length > 0 &&
+                  (search ||
+                    statusFilter !== 'todos' ||
+                    prestadorFilter !== 'todos' ||
+                    projetoFilter !== 'todos') && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setSearch('')
+                        setStatusFilter('todos')
+                        setPrestadorFilter('todos')
+                        setProjetoFilter('todos')
+                      }}
+                      className="text-xs font-semibold border-slate-300 text-[#1E293B] hover:bg-slate-50"
+                    >
+                      Limpar filtros
+                    </Button>
+                  )}
+                <Button
+                  onClick={() => setModalOpen(true)}
+                  className="bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs font-semibold"
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1" />
+                  {atividades.length > 0 ? 'Nova Atividade' : 'Registrar Primeira Atividade'}
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="overflow-x-auto">

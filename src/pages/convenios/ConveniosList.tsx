@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/select'
 import { StatusBadge, formatBRL, formatDateBR } from '@/components/StatusBadge'
 import { ModalConvenio } from '@/components/ModalConvenio'
+import { toast } from '@/hooks/use-toast'
 import {
   getConvenios,
   deleteConvenio,
@@ -57,20 +58,62 @@ export default function ConveniosList() {
 
   const fetchData = async () => {
     try {
-      const [convList, secList, planList, projList, empList] = await Promise.all([
+      const results = await Promise.allSettled([
         getConvenios(),
         getSecretarias(),
         getPlanosTrabalho(),
         getProjetos(),
         getEmpenhos(),
       ])
-      setConvenios(convList)
-      setSecretarias(secList)
-      setPlanos(planList)
-      setProjetos(projList)
-      setEmpenhos(empList)
+
+      const [convRes, secRes, planRes, projRes, empRes] = results
+
+      if (convRes.status === 'fulfilled') {
+        setConvenios(convRes.value)
+      } else {
+        console.error('Erro ao buscar convênios:', convRes.reason)
+      }
+
+      if (secRes.status === 'fulfilled') {
+        setSecretarias(secRes.value)
+      } else {
+        console.error('Erro ao buscar secretarias:', secRes.reason)
+      }
+
+      if (planRes.status === 'fulfilled') {
+        setPlanos(planRes.value)
+      } else {
+        console.error('Erro ao buscar planos de trabalho:', planRes.reason)
+      }
+
+      if (projRes.status === 'fulfilled') {
+        setProjetos(projRes.value)
+      } else {
+        console.error('Erro ao buscar projetos:', projRes.reason)
+      }
+
+      if (empRes.status === 'fulfilled') {
+        setEmpenhos(empRes.value)
+      } else {
+        console.error('Erro ao buscar empenhos:', empRes.reason)
+      }
+
+      const hasFailures = results.some((r) => r.status === 'rejected')
+      if (hasFailures) {
+        toast({
+          title: 'Atenção ao carregar dados',
+          description:
+            'Algumas informações dos instrumentos municipais não puderam ser sincronizadas.',
+          variant: 'destructive',
+        })
+      }
     } catch (err) {
-      console.error(err)
+      console.error('Erro inesperado em fetchData de ConveniosList:', err)
+      toast({
+        title: 'Erro ao carregar instrumentos',
+        description: 'Não foi possível carregar os dados. Tente novamente.',
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false)
     }
@@ -298,22 +341,41 @@ export default function ConveniosList() {
         <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-[#CBD5E1] p-8">
           <Landmark className="w-12 h-12 text-[#94A3B8] mx-auto mb-3" />
           <h3 className="text-sm font-bold text-[#1E293B]">
-            Nenhum instrumento municipal cadastrado
+            {convenios.length > 0
+              ? 'Nenhum instrumento corresponde aos filtros'
+              : 'Nenhum instrumento municipal cadastrado'}
           </h3>
           <p className="text-xs text-[#64748B] mt-1 max-w-md mx-auto">
-            Cadastre seu primeiro Termo de Parceria, Convênio ou Acordo de Cooperação Técnica com a
-            prefeitura municipal.
+            {convenios.length > 0
+              ? `Existem ${convenios.length} ${
+                  convenios.length === 1 ? 'instrumento cadastrado' : 'instrumentos cadastrados'
+                }, mas os filtros ativos (busca ou status) estão ocultando os registros.`
+              : 'Cadastre seu primeiro Termo de Parceria, Convênio ou Acordo de Cooperação Técnica com a prefeitura municipal.'}
           </p>
-          <Button
-            onClick={() => {
-              setEditingConvenio(null)
-              setModalOpen(true)
-            }}
-            className="mt-4 bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs font-semibold shadow-sm"
-          >
-            <Plus className="w-3.5 h-3.5 mr-1" />
-            Cadastrar Primeiro Instrumento
-          </Button>
+          <div className="mt-4 flex items-center justify-center gap-2 flex-wrap">
+            {convenios.length > 0 && (search || statusFilter !== 'todos') && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearch('')
+                  setStatusFilter('todos')
+                }}
+                className="text-xs font-semibold border-slate-300 text-[#1E293B] hover:bg-slate-50"
+              >
+                Limpar filtros
+              </Button>
+            )}
+            <Button
+              onClick={() => {
+                setEditingConvenio(null)
+                setModalOpen(true)
+              }}
+              className="bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs font-semibold shadow-sm"
+            >
+              <Plus className="w-3.5 h-3.5 mr-1" />
+              {convenios.length > 0 ? 'Novo Instrumento' : 'Cadastrar Primeiro Instrumento'}
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">

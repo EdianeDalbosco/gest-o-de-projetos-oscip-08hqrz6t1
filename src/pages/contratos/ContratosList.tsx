@@ -27,6 +27,7 @@ import { StatusBadge, formatBRL, formatDateBR } from '@/components/StatusBadge'
 import { ModalContrato } from '@/components/ModalContrato'
 import { getContratos } from '@/services/api'
 import { useRealtime } from '@/hooks/use-realtime'
+import { toast } from '@/hooks/use-toast'
 import type { ContratoRecord, ContratoTipo } from '@/types'
 
 export default function ContratosList() {
@@ -43,7 +44,12 @@ export default function ContratosList() {
       const data = await getContratos()
       setContratos(data)
     } catch (e) {
-      console.error(e)
+      console.error('Erro ao buscar contratos:', e)
+      toast({
+        title: 'Erro ao carregar contratos',
+        description: 'Não foi possível carregar a lista de contratos. Tente novamente.',
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false)
     }
@@ -158,23 +164,42 @@ export default function ContratosList() {
                     <Users2 className="w-6 h-6" />
                   </div>
                   <h3 className="text-sm font-bold text-[#1E293B]">
-                    Nenhum colaborador CLT cadastrado
+                    {contratos.filter((c) => c.tipo === 'CLT').length > 0
+                      ? 'Nenhum colaborador CLT corresponde aos filtros'
+                      : 'Nenhum colaborador CLT cadastrado'}
                   </h3>
                   <p className="text-xs text-[#64748B] max-w-sm mx-auto">
-                    Cadastre os profissionais em regime CLT vinculados aos planos de trabalho e
-                    projetos da entidade.
+                    {contratos.filter((c) => c.tipo === 'CLT').length > 0
+                      ? 'Os filtros ativos estão ocultando os colaboradores CLT existentes.'
+                      : 'Cadastre os profissionais em regime CLT vinculados aos planos de trabalho e projetos da entidade.'}
                   </p>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setEditingContrato(null)
-                      setModalOpen(true)
-                    }}
-                    className="bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs"
-                  >
-                    <Plus className="w-3.5 h-3.5 mr-1" />
-                    Cadastrar Colaborador CLT
-                  </Button>
+                  <div className="flex items-center justify-center gap-2 flex-wrap pt-1">
+                    {contratos.filter((c) => c.tipo === 'CLT').length > 0 &&
+                      (search || statusFilter !== 'todos') && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSearch('')
+                            setStatusFilter('todos')
+                          }}
+                          className="text-xs font-semibold border-slate-300 text-[#1E293B] hover:bg-slate-50"
+                        >
+                          Limpar filtros
+                        </Button>
+                      )}
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setEditingContrato(null)
+                        setModalOpen(true)
+                      }}
+                      className="bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs"
+                    >
+                      <Plus className="w-3.5 h-3.5 mr-1" />
+                      Cadastrar Colaborador CLT
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -270,23 +295,42 @@ export default function ContratosList() {
                     <Briefcase className="w-6 h-6" />
                   </div>
                   <h3 className="text-sm font-bold text-[#1E293B]">
-                    Nenhum prestador PJ cadastrado
+                    {contratos.filter((c) => c.tipo === 'PJ').length > 0
+                      ? 'Nenhum prestador PJ corresponde aos filtros'
+                      : 'Nenhum prestador PJ cadastrado'}
                   </h3>
                   <p className="text-xs text-[#64748B] max-w-sm mx-auto">
-                    Cadastre prestadores de serviço pessoa jurídica (médicos, instrutores,
-                    consultorias e assessorias técnicas).
+                    {contratos.filter((c) => c.tipo === 'PJ').length > 0
+                      ? 'Os filtros ativos estão ocultando os prestadores PJ existentes.'
+                      : 'Cadastre prestadores de serviço pessoa jurídica (médicos, instrutores, consultorias e assessorias técnicas).'}
                   </p>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setEditingContrato(null)
-                      setModalOpen(true)
-                    }}
-                    className="bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs"
-                  >
-                    <Plus className="w-3.5 h-3.5 mr-1" />
-                    Cadastrar Prestador PJ
-                  </Button>
+                  <div className="flex items-center justify-center gap-2 flex-wrap pt-1">
+                    {contratos.filter((c) => c.tipo === 'PJ').length > 0 &&
+                      (search || statusFilter !== 'todos') && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSearch('')
+                            setStatusFilter('todos')
+                          }}
+                          className="text-xs font-semibold border-slate-300 text-[#1E293B] hover:bg-slate-50"
+                        >
+                          Limpar filtros
+                        </Button>
+                      )}
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setEditingContrato(null)
+                        setModalOpen(true)
+                      }}
+                      className="bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs"
+                    >
+                      <Plus className="w-3.5 h-3.5 mr-1" />
+                      Cadastrar Prestador PJ
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <div className="overflow-x-auto">

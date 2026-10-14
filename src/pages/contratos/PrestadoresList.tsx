@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/select'
 import { formatBRL } from '@/components/StatusBadge'
 import { getPrestadoresColaboradores, deletePrestadorColaborador } from '@/services/api'
+import { toast } from '@/hooks/use-toast'
 import { useRealtime } from '@/hooks/use-realtime'
 import { ModalPrestador } from '@/components/ModalPrestador'
 import { ModalImportarPrestadores } from '@/components/ModalImportarPrestadores'
@@ -42,7 +43,12 @@ export default function PrestadoresList() {
       const data = await getPrestadoresColaboradores()
       setPrestadores(data)
     } catch (e) {
-      console.error(e)
+      console.error('Erro ao carregar prestadores/colaboradores:', e)
+      toast({
+        title: 'Erro ao carregar cadastros',
+        description: 'Não foi possível carregar a lista de prestadores e colaboradores.',
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false)
     }
@@ -208,22 +214,43 @@ export default function PrestadoresList() {
                 <Users2 className="w-6 h-6" />
               </div>
               <h3 className="text-sm font-bold text-[#1E293B]">
-                Nenhum prestador ou colaborador cadastrado
+                {prestadores.length > 0
+                  ? 'Nenhum cadastro corresponde aos filtros'
+                  : 'Nenhum prestador ou colaborador cadastrado'}
               </h3>
               <p className="text-xs text-[#64748B] max-w-md mx-auto">
-                Cadastre profissionais PJ (médicos, empresas parceiras) ou colaboradores CLT para
-                vincular ao Termo de Parceria e gerar faturamentos mensais.
+                {prestadores.length > 0
+                  ? `Existem ${prestadores.length} ${
+                      prestadores.length === 1 ? 'cadastro ativo' : 'cadastros ativos'
+                    }, mas a busca ou filtro de vínculo estão ocultando os registros.`
+                  : 'Cadastre profissionais PJ (médicos, empresas parceiras) ou colaboradores CLT para vincular ao Termo de Parceria e gerar faturamentos mensais.'}
               </p>
-              <Button
-                onClick={() => {
-                  setPrestadorToEdit(null)
-                  setModalOpen(true)
-                }}
-                className="bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs font-semibold"
-              >
-                <Plus className="w-3.5 h-3.5 mr-1" />
-                Cadastrar Primeiro Prestador/Colaborador
-              </Button>
+              <div className="flex items-center justify-center gap-2 flex-wrap pt-1">
+                {prestadores.length > 0 && (search || tipoFilter !== 'todos') && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSearch('')
+                      setTipoFilter('todos')
+                    }}
+                    className="text-xs font-semibold border-slate-300 text-[#1E293B] hover:bg-slate-50"
+                  >
+                    Limpar filtros
+                  </Button>
+                )}
+                <Button
+                  onClick={() => {
+                    setPrestadorToEdit(null)
+                    setModalOpen(true)
+                  }}
+                  className="bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs font-semibold"
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1" />
+                  {prestadores.length > 0
+                    ? 'Novo Cadastro'
+                    : 'Cadastrar Primeiro Prestador/Colaborador'}
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="overflow-x-auto">

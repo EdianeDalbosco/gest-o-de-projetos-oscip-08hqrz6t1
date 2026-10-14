@@ -73,7 +73,12 @@ export default function ProjetosList() {
       const data = await getProjetos()
       setProjetos(data)
     } catch (err) {
-      console.error(err)
+      console.error('Erro ao carregar projetos:', err)
+      toast({
+        title: 'Erro ao carregar projetos',
+        description: 'Não foi possível carregar a lista de projetos. Tente novamente.',
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false)
     }
@@ -134,7 +139,13 @@ export default function ProjetosList() {
         (p.parceiro && p.parceiro.toLowerCase().includes(searchLower)) ||
         secNome.toLowerCase().includes(searchLower) ||
         convNum.toLowerCase().includes(searchLower)
-      const matchesStatus = statusFilter === 'todos' || p.status === statusFilter
+      // Trata compatibilidade caso o registro venha como 'ativo' ou 'em_andamento'
+      const pStatus = p.status as string
+      const matchesStatus =
+        statusFilter === 'todos' ||
+        pStatus === statusFilter ||
+        (statusFilter === 'ativo' && pStatus === 'em_andamento') ||
+        (statusFilter === 'em_andamento' && (pStatus === 'ativo' || pStatus === 'em_andamento'))
       return matchesSearch && matchesStatus
     })
 
@@ -390,7 +401,7 @@ export default function ProjetosList() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos os status</SelectItem>
-                <SelectItem value="ativo">Ativos</SelectItem>
+                <SelectItem value="ativo">Ativos / Em Andamento</SelectItem>
                 <SelectItem value="pausado">Pausados</SelectItem>
                 <SelectItem value="concluido">Concluídos</SelectItem>
                 <SelectItem value="cancelado">Cancelados</SelectItem>
@@ -506,25 +517,50 @@ export default function ProjetosList() {
       </div>
 
       {/* Renderização conforme modo selecionado */}
-      {filteredProjetos.length === 0 ? (
+      {loading ? (
+        <div className="py-20 text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-[#1FAF7A] mx-auto mb-2" />
+          <p className="text-xs text-[#64748B]">Carregando projetos...</p>
+        </div>
+      ) : filteredProjetos.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-[#CBD5E1] p-8">
           <FolderKanban className="w-12 h-12 text-[#94A3B8] mx-auto mb-3" />
-          <h3 className="text-sm font-bold text-[#1E293B]">Nenhum projeto encontrado</h3>
+          <h3 className="text-sm font-bold text-[#1E293B]">
+            {projetos.length > 0
+              ? 'Nenhum projeto corresponde aos filtros'
+              : 'Nenhum projeto cadastrado'}
+          </h3>
           <p className="text-xs text-[#64748B] mt-1 max-w-md mx-auto">
-            {search || statusFilter !== 'todos'
-              ? 'Tente ajustar os filtros ou a busca para localizar os projetos.'
+            {projetos.length > 0
+              ? `Existem ${projetos.length} ${
+                  projetos.length === 1 ? 'projeto cadastrado' : 'projetos cadastrados'
+                }, mas os filtros ativos (busca ou status) estão ocultando os registros.`
               : 'Cadastre seu primeiro projeto para gerenciar cronograma, contratos, prestadores e metas.'}
           </p>
-          <Button
-            onClick={() => {
-              setEditingProjeto(null)
-              setModalOpen(true)
-            }}
-            className="mt-4 bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs font-semibold shadow-sm"
-          >
-            <Plus className="w-3.5 h-3.5 mr-1" />
-            Cadastrar Primeiro Projeto
-          </Button>
+          <div className="mt-4 flex items-center justify-center gap-2 flex-wrap">
+            {projetos.length > 0 && (search || statusFilter !== 'todos') && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearch('')
+                  setStatusFilter('todos')
+                }}
+                className="text-xs font-semibold border-slate-300 text-[#1E293B] hover:bg-slate-50"
+              >
+                Limpar filtros
+              </Button>
+            )}
+            <Button
+              onClick={() => {
+                setEditingProjeto(null)
+                setModalOpen(true)
+              }}
+              className="bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs font-semibold shadow-sm"
+            >
+              <Plus className="w-3.5 h-3.5 mr-1" />
+              {projetos.length > 0 ? 'Novo Projeto' : 'Cadastrar Primeiro Projeto'}
+            </Button>
+          </div>
         </div>
       ) : viewMode === 'cards' ? (
         /* 1. MODO QUADROS (CARDS) */

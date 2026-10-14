@@ -163,17 +163,45 @@ export default function SolicitacoesList() {
   const fetchData = async () => {
     try {
       setLoading(true)
-      const [sList, pList, cfg, uList] = await Promise.all([
+      const results = await Promise.allSettled([
         getSolicitacoes(),
         getProjetos(),
         getOrganizacaoConfig(),
         getUsers().catch(() => []),
       ])
-      setSolicitacoes(sList)
-      setProjetos(pList)
-      setOrgConfig(cfg)
-      setUsuarios(uList)
-    } catch {
+
+      const [sRes, pRes, cfgRes, uRes] = results
+
+      if (sRes.status === 'fulfilled') {
+        setSolicitacoes(sRes.value)
+      } else {
+        console.error('Erro ao buscar solicitacoes:', sRes.reason)
+        toast({
+          title: 'Erro ao carregar solicitações',
+          description: 'Não foi possível carregar a lista de solicitações.',
+          variant: 'destructive',
+        })
+      }
+
+      if (pRes.status === 'fulfilled') {
+        setProjetos(pRes.value)
+      } else {
+        console.error('Erro ao buscar projetos para solicitações:', pRes.reason)
+      }
+
+      if (cfgRes.status === 'fulfilled') {
+        setOrgConfig(cfgRes.value)
+      } else {
+        console.error('Erro ao buscar orgConfig:', cfgRes.reason)
+      }
+
+      if (uRes.status === 'fulfilled') {
+        setUsuarios(uRes.value)
+      } else {
+        console.error('Erro ao buscar usuários:', uRes.reason)
+      }
+    } catch (err) {
+      console.error('Erro inesperado em fetchData de SolicitacoesList:', err)
       toast({
         title: 'Erro ao carregar dados',
         description: 'Não foi possível carregar as solicitações.',
@@ -837,25 +865,58 @@ export default function SolicitacoesList() {
                 </div>
                 <div className="space-y-1">
                   <h3 className="text-sm font-bold text-[#1E293B]">
-                    Nenhuma solicitação ou pendência encontrada
+                    {solicitacoes.length > 0
+                      ? 'Nenhuma solicitação corresponde aos filtros'
+                      : 'Nenhuma solicitação ou pendência encontrada'}
                   </h3>
                   <p className="text-xs text-[#64748B]">
-                    Tente ajustar os filtros ou cadastre um novo registro para acompanhamento.
+                    {solicitacoes.length > 0
+                      ? `Existem ${solicitacoes.length} ${
+                          solicitacoes.length === 1
+                            ? 'solicitação cadastrada'
+                            : 'solicitações cadastradas'
+                        }, mas os filtros ativos estão ocultando os registros.`
+                      : 'Cadastre um novo registro para acompanhamento de tarefas e prazos.'}
                   </p>
                 </div>
-                {canEdit && (
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setEditingSolicitacao(null)
-                      setModalOpen(true)
-                    }}
-                    className="bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs font-semibold mt-2"
-                  >
-                    <Plus className="w-4 h-4 mr-1.5" />
-                    Criar Primeira Solicitação
-                  </Button>
-                )}
+                <div className="flex items-center justify-center gap-2 flex-wrap pt-1">
+                  {solicitacoes.length > 0 &&
+                    (busca ||
+                      filtroStatus !== 'todos' ||
+                      filtroPrioridade !== 'todas' ||
+                      filtroTipo !== 'todos' ||
+                      filtroProjeto !== 'todos' ||
+                      filtroResponsavel !== 'todos') && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setBusca('')
+                          setFiltroStatus('todos')
+                          setFiltroPrioridade('todas')
+                          setFiltroTipo('todos')
+                          setFiltroProjeto('todos')
+                          setFiltroResponsavel('todos')
+                        }}
+                        className="text-xs font-semibold border-slate-300 text-[#1E293B] hover:bg-slate-50"
+                      >
+                        Limpar filtros
+                      </Button>
+                    )}
+                  {canEdit && (
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setEditingSolicitacao(null)
+                        setModalOpen(true)
+                      }}
+                      className="bg-[#1FAF7A] hover:bg-[#179C6E] text-white text-xs font-semibold"
+                    >
+                      <Plus className="w-4 h-4 mr-1.5" />
+                      {solicitacoes.length > 0 ? 'Nova Solicitação' : 'Criar Primeira Solicitação'}
+                    </Button>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="overflow-x-auto">
