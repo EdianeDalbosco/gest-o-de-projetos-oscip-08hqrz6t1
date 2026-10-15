@@ -665,7 +665,7 @@ export default function ProjetosList() {
                 {/* Contratos Vinculados Badge */}
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-[#64748B] font-medium">Contratos Vinculados</span>
-                  {renderContratosBadges(proj.contratos_vinculados)}
+                  {renderContratosBadges(proj.contratos_vinculados || [])}
                 </div>
 
                 {/* Period & Total Budget */}
@@ -677,10 +677,9 @@ export default function ProjetosList() {
                     </span>
                   </div>
                   <span className="font-bold text-sm text-[#1E293B] tabular-nums">
-                    {formatBRL(proj.valor_total)}
+                    {formatBRL(Number(proj.valor_total) || 0)}
                   </span>
                 </div>
-
                 {/* Detail CTA button */}
                 <Button
                   asChild
@@ -751,8 +750,8 @@ export default function ProjetosList() {
                     Valor Total
                   </span>
                   <span className="font-bold text-sm text-[#1E293B] tabular-nums">
-                    {formatBRL(proj.valor_total)}
-                  </span>
+                    {formatBRL(Number(proj.valor_total) || 0)}
+                  </span>{' '}
                 </div>
 
                 <div className="flex items-center gap-1">
@@ -877,7 +876,7 @@ export default function ProjetosList() {
 
                       {/* Valor Total */}
                       <td className="py-3 px-3 text-right font-bold text-[#1E293B] tabular-nums whitespace-nowrap">
-                        {formatBRL(proj.valor_total || 0)}
+                        {formatBRL(Number(proj.valor_total) || 0)}
                       </td>
 
                       {/* Metas / Progresso */}

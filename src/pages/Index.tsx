@@ -49,7 +49,7 @@ export default function Index() {
 
   const loadData = async () => {
     try {
-      const [projList, contList, ativList, fatList, despList, solList] = await Promise.all([
+      const results = await Promise.allSettled([
         getProjetos(),
         getContratos(),
         getAtividades(),
@@ -57,12 +57,44 @@ export default function Index() {
         getDespesas(),
         getSolicitacoes(),
       ])
-      setProjetos(projList)
-      setContratos(contList)
-      setAtividades(ativList)
-      setFaturas(fatList)
-      setDespesas(despList)
-      setSolicitacoes(solList)
+
+      const [projRes, contRes, ativRes, fatRes, despRes, solRes] = results
+
+      if (projRes.status === 'fulfilled' && Array.isArray(projRes.value)) {
+        setProjetos(projRes.value)
+      } else {
+        setProjetos([])
+      }
+
+      if (contRes.status === 'fulfilled' && Array.isArray(contRes.value)) {
+        setContratos(contRes.value)
+      } else {
+        setContratos([])
+      }
+
+      if (ativRes.status === 'fulfilled' && Array.isArray(ativRes.value)) {
+        setAtividades(ativRes.value)
+      } else {
+        setAtividades([])
+      }
+
+      if (fatRes.status === 'fulfilled' && Array.isArray(fatRes.value)) {
+        setFaturas(fatRes.value)
+      } else {
+        setFaturas([])
+      }
+
+      if (despRes.status === 'fulfilled' && Array.isArray(despRes.value)) {
+        setDespesas(despRes.value)
+      } else {
+        setDespesas([])
+      }
+
+      if (solRes.status === 'fulfilled' && Array.isArray(solRes.value)) {
+        setSolicitacoes(solRes.value)
+      } else {
+        setSolicitacoes([])
+      }
     } catch (e) {
       console.error('Erro ao carregar dados do dashboard:', e)
     } finally {
@@ -82,6 +114,16 @@ export default function Index() {
   useRealtime('despesas', () => loadData())
   useRealtime('solicitacoes', () => loadData())
 
+  const safeProjetos = useMemo(() => (Array.isArray(projetos) ? projetos : []), [projetos])
+  const safeContratos = useMemo(() => (Array.isArray(contratos) ? contratos : []), [contratos])
+  const safeAtividades = useMemo(() => (Array.isArray(atividades) ? atividades : []), [atividades])
+  const safeFaturas = useMemo(() => (Array.isArray(faturas) ? faturas : []), [faturas])
+  const safeDespesas = useMemo(() => (Array.isArray(despesas) ? despesas : []), [despesas])
+  const safeSolicitacoes = useMemo(
+    () => (Array.isArray(solicitacoes) ? solicitacoes : []),
+    [solicitacoes],
+  )
+
   // 1. KPIs
   // Faturamento do Mês atual (faturas pagas e emitidas deste mês)
   const faturamentoMes = useMemo(() => {
@@ -89,35 +131,42 @@ export default function Index() {
     const currentMonth = now.getMonth()
     const currentYear = now.getFullYear()
 
-    return faturas
+    return safeFaturas
       .filter((f) => {
-        if (!f.data_emissao) return false
+        if (!f || !f.data_emissao) return false
         const d = new Date(f.data_emissao)
+        if (isNaN(d.getTime())) return false
         return (
           d.getUTCFullYear() === currentYear &&
           d.getUTCMonth() === currentMonth &&
           f.status !== 'vencida'
         )
       })
-      .reduce((sum, f) => sum + (Number(f.valor) || 0), 0)
-  }, [faturas])
+      .reduce((sum, f) => sum + (Number(f?.valor) || 0), 0)
+  }, [safeFaturas])
 
   // Contratos Ativos (CLT + PJ)
   const contratosAtivosCount = useMemo(() => {
-    return contratos.filter((c) => c.status === 'ativo' || c.status === 'vencendo').length
-  }, [contratos])
+    return safeContratos.filter((c) => {
+      const st = (c?.status || '').toLowerCase().trim()
+      return st === 'ativo' || st === 'vencendo'
+    }).length
+  }, [safeContratos])
 
   // Valor a Receber (faturas emitidas ou vencidas ainda não pagas)
   const valorAReceber = useMemo(() => {
-    return faturas
-      .filter((f) => f.status === 'emitida' || f.status === 'vencida')
-      .reduce((sum, f) => sum + (Number(f.valor) || 0), 0)
-  }, [faturas])
+    return safeFaturas
+      .filter((f) => {
+        const st = (f?.status || '').toLowerCase().trim()
+        return st === 'emitida' || st === 'vencida'
+      })
+      .reduce((sum, f) => sum + (Number(f?.valor) || 0), 0)
+  }, [safeFaturas])
 
   // Horas de Prestador (Total aprovadas/pendentes deste mês)
   const horasPrestadorMes = useMemo(() => {
-    return atividades.reduce((sum, a) => sum + (Number(a.horas) || 0), 0)
-  }, [atividades])
+    return safeAtividades.reduce((sum, a) => sum + (Number(a?.horas) || 0), 0)
+  }, [safeAtividades])
 
   // 2. Gráfico de Faturamento dos últimos 7 meses (interativo)
   const monthlyData = useMemo(() => {
@@ -145,13 +194,14 @@ export default function Index() {
       const label = `${monthNames[mIdx]}`
 
       // Sum faturas of this month
-      const sum = faturas
+      const sum = safeFaturas
         .filter((f) => {
-          if (!f.data_emissao) return false
+          if (!f || !f.data_emissao) return false
           const fd = new Date(f.data_emissao)
+          if (isNaN(fd.getTime())) return false
           return fd.getUTCMonth() === mIdx && fd.getUTCFullYear() === y
         })
-        .reduce((s, f) => s + (Number(f.valor) || 0), 0)
+        .reduce((s, f) => s + (Number(f?.valor) || 0), 0)
 
       result.push({
         month: label,
@@ -159,20 +209,23 @@ export default function Index() {
       })
     }
     return result
-  }, [faturas])
+  }, [safeFaturas])
 
-  const maxMonthValue = Math.max(...monthlyData.map((d) => d.value), 40000)
+  const maxMonthValue = useMemo(() => {
+    const values = monthlyData.map((d) => d.value || 0)
+    return Math.max(...values, 40000)
+  }, [monthlyData])
 
-  // 3. Gestão Financeira Resumo (Receitas x Despesas totais de Maio ou acumuladas)
+  // 3. Gestão Financeira Resumo (Receitas x Despesas totais ou acumuladas)
   const totalReceitas = useMemo(() => {
-    return faturas
-      .filter((f) => f.status === 'paga')
-      .reduce((sum, f) => sum + (Number(f.valor) || 0), 0)
-  }, [faturas])
+    return safeFaturas
+      .filter((f) => (f?.status || '').toLowerCase().trim() === 'paga')
+      .reduce((sum, f) => sum + (Number(f?.valor) || 0), 0)
+  }, [safeFaturas])
 
   const totalDespesas = useMemo(() => {
-    return despesas.reduce((sum, d) => sum + (Number(d.valor) || 0), 0)
-  }, [despesas])
+    return safeDespesas.reduce((sum, d) => sum + (Number(d?.valor) || 0), 0)
+  }, [safeDespesas])
 
   const caixaRatio =
     totalReceitas > 0 ? Math.min(100, Math.round((totalDespesas / totalReceitas) * 100)) : 0
@@ -187,28 +240,36 @@ export default function Index() {
       data: string
     }[] = []
 
-    faturas.slice(0, 3).forEach((f) => {
+    safeFaturas.slice(0, 3).forEach((f) => {
+      if (!f) return
       txs.push({
         id: `fat-${f.id}`,
         tipo: 'receita',
-        descricao: `Fatura ${f.numero}`,
-        valor: f.valor,
-        data: f.data_emissao,
+        descricao: f.numero ? `Fatura ${f.numero}` : 'Fatura sem número',
+        valor: Number(f.valor) || 0,
+        data: f.data_emissao || f.created || '',
       })
     })
 
-    despesas.slice(0, 3).forEach((d) => {
+    safeDespesas.slice(0, 3).forEach((d) => {
+      if (!d) return
       txs.push({
         id: `desp-${d.id}`,
         tipo: 'despesa',
-        descricao: d.descricao,
-        valor: d.valor,
-        data: d.data,
+        descricao: d.descricao || 'Despesa operacional',
+        valor: Number(d.valor) || 0,
+        data: d.data || d.created || '',
       })
     })
 
-    return txs.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()).slice(0, 3)
-  }, [faturas, despesas])
+    return txs
+      .sort((a, b) => {
+        const tA = a.data ? new Date(a.data).getTime() : 0
+        const tB = b.data ? new Date(b.data).getTime() : 0
+        return tB - tA
+      })
+      .slice(0, 3)
+  }, [safeFaturas, safeDespesas])
 
   // 5. Alertas Recentes
   const alertas = useMemo(() => {
@@ -216,29 +277,35 @@ export default function Index() {
       []
 
     // Faturas vencidas
-    const vencidas = faturas.filter((f) => f.status === 'vencida')
+    const vencidas = safeFaturas.filter((f) => (f?.status || '').toLowerCase().trim() === 'vencida')
     vencidas.forEach((f) => {
+      if (!f) return
       list.push({
         id: `venc-${f.id}`,
-        titulo: `Fatura ${f.numero} no valor de ${formatBRL(f.valor)} está vencida`,
+        titulo: `Fatura ${f.numero || ''} no valor de ${formatBRL(f.valor || 0)} está vencida`,
         tipo: 'error',
         link: '/faturamento',
       })
     })
 
     // Contratos vencendo
-    const expirando = contratos.filter((c) => c.status === 'vencendo')
+    const expirando = safeContratos.filter(
+      (c) => (c?.status || '').toLowerCase().trim() === 'vencendo',
+    )
     expirando.forEach((c) => {
+      if (!c) return
       list.push({
         id: `exp-${c.id}`,
-        titulo: `Contrato de ${c.nome} (${c.tipo}) está próximo do vencimento`,
+        titulo: `Contrato de ${c.nome || 'Prestador'} (${c.tipo || 'PJ'}) está próximo do vencimento`,
         tipo: 'warning',
         link: `/contratos/${c.id}`,
       })
     })
 
     // Atividades pendentes
-    const pendentes = atividades.filter((a) => a.status === 'pendente')
+    const pendentes = safeAtividades.filter(
+      (a) => (a?.status || '').toLowerCase().trim() === 'pendente',
+    )
     if (pendentes.length > 0) {
       list.push({
         id: 'pend-atividades',
@@ -249,24 +316,30 @@ export default function Index() {
     }
 
     return list
-  }, [faturas, contratos, atividades])
+  }, [safeFaturas, safeContratos, safeAtividades])
 
   // 6. Pendências em Aberto mais urgentes (atrasadas primeiro, limite 5)
   const pendenciasEmAberto = useMemo(() => {
-    const abertas = solicitacoes.filter((s) => s.status !== 'Concluída' && s.status !== 'Cancelada')
+    const abertas = safeSolicitacoes.filter((s) => {
+      if (!s) return false
+      const st = (s.status || '').toLowerCase().trim()
+      return st !== 'concluída' && st !== 'concluida' && st !== 'cancelada'
+    })
 
     const hoje = new Date()
     hoje.setHours(0, 0, 0, 0)
 
     const isAtrasada = (s: SolicitacaoRecord) => {
-      if (!s.prazo) return false
-      return new Date(s.prazo) < hoje
+      if (!s?.prazo) return false
+      const p = new Date(s.prazo)
+      return !isNaN(p.getTime()) && p < hoje
     }
 
     const prioridadePeso: Record<string, number> = {
       Urgente: 4,
       Alta: 3,
       Média: 2,
+      Media: 2,
       Baixa: 1,
     }
 
@@ -276,22 +349,35 @@ export default function Index() {
         const bAtraso = isAtrasada(b)
         if (aAtraso !== bAtraso) return aAtraso ? -1 : 1
 
-        const pA = prioridadePeso[a.prioridade] || 0
-        const pB = prioridadePeso[b.prioridade] || 0
+        const pA = prioridadePeso[a?.prioridade || ''] || 0
+        const pB = prioridadePeso[b?.prioridade || ''] || 0
         if (pA !== pB) return pB - pA
 
-        if (a.prazo && b.prazo) {
-          return new Date(a.prazo).getTime() - new Date(b.prazo).getTime()
+        const tA = a?.prazo ? new Date(a.prazo).getTime() : 0
+        const tB = b?.prazo ? new Date(b.prazo).getTime() : 0
+        if (tA && tB) {
+          return tA - tB
         }
-        if (a.prazo) return -1
-        if (b.prazo) return 1
+        if (tA) return -1
+        if (tB) return 1
 
-        return new Date(b.created).getTime() - new Date(a.created).getTime()
+        const cA = a?.created ? new Date(a.created).getTime() : 0
+        const cB = b?.created ? new Date(b.created).getTime() : 0
+        return cB - cA
       })
       .slice(0, 5)
-  }, [solicitacoes])
+  }, [safeSolicitacoes])
 
   const [hoveredBar, setHoveredBar] = useState<{ month: string; value: number } | null>(null)
+
+  if (loading) {
+    return (
+      <div className="py-24 text-center flex flex-col items-center justify-center gap-3">
+        <div className="w-9 h-9 border-3 border-[#1FAF7A] border-t-transparent rounded-full animate-spin" />
+        <p className="text-xs font-medium text-[#64748B]">Carregando indicadores do painel...</p>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6 pb-6">
@@ -367,10 +453,17 @@ export default function Index() {
             <div className="mt-2.5 flex items-center text-xs text-amber-700 font-medium">
               <AlertCircle className="w-3.5 h-3.5 mr-1" />
               <span>
-                {faturas.filter((f) => f.status === 'emitida' || f.status === 'vencida').length ===
-                0
+                {safeFaturas.filter((f) => {
+                  const st = (f?.status || '').toLowerCase().trim()
+                  return st === 'emitida' || st === 'vencida'
+                }).length === 0
                   ? 'Sem pendências a receber'
-                  : `${faturas.filter((f) => f.status === 'emitida' || f.status === 'vencida').length} fatura(s) pendente(s)`}
+                  : `${
+                      safeFaturas.filter((f) => {
+                        const st = (f?.status || '').toLowerCase().trim()
+                        return st === 'emitida' || st === 'vencida'
+                      }).length
+                    } fatura(s) pendente(s)`}
               </span>
             </div>
           </CardContent>
@@ -396,9 +489,9 @@ export default function Index() {
             <div className="mt-2.5 flex items-center text-xs text-purple-700 font-medium">
               <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
               <span>
-                {atividades
-                  .filter((a) => a.status === 'aprovada')
-                  .reduce((s, a) => s + (Number(a.horas) || 0), 0)}
+                {safeAtividades
+                  .filter((a) => (a?.status || '').toLowerCase().trim() === 'aprovada')
+                  .reduce((s, a) => s + (Number(a?.horas) || 0), 0)}
                 h aprovadas
               </span>
             </div>
@@ -566,8 +659,10 @@ export default function Index() {
             <Link to="/solicitacoes">
               Ver todas (
               {
-                solicitacoes.filter((s) => s.status !== 'Concluída' && s.status !== 'Cancelada')
-                  .length
+                safeSolicitacoes.filter((s) => {
+                  const st = (s?.status || '').toLowerCase().trim()
+                  return st !== 'concluída' && st !== 'concluida' && st !== 'cancelada'
+                }).length
               }
               )
               <ChevronRight className="w-4 h-4 ml-1" />
@@ -668,7 +763,7 @@ export default function Index() {
           </Button>
         </CardHeader>
         <CardContent>
-          {projetos.length === 0 ? (
+          {safeProjetos.length === 0 ? (
             <div className="text-center py-8 text-xs text-[#64748B]">
               <p>Nenhum projeto cadastrado no momento.</p>
               <Button asChild size="sm" className="mt-3 bg-[#1FAF7A] hover:bg-[#179C6E] text-white">
@@ -689,46 +784,50 @@ export default function Index() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#F1F5F9]">
-                  {projetos.slice(0, 5).map((p) => (
-                    <tr
-                      key={p.id}
-                      className="hover:bg-slate-50 transition-colors group cursor-pointer"
-                    >
-                      <td className="py-3 pl-2 font-semibold text-[#1E293B]">
-                        <Link to={`/projetos/${p.id}`} className="hover:text-[#1FAF7A]">
-                          {p.nome}
-                        </Link>
-                      </td>
-                      <td className="py-3 px-3 text-[#64748B]">{p.parceiro || '—'}</td>
-                      <td className="py-3 px-3">
-                        <StatusBadge status={p.status} />
-                      </td>
-                      <td className="py-3 px-3 w-40">
-                        <div className="flex items-center gap-2">
-                          <Progress value={p.progresso || 0} className="h-2 flex-1" />
-                          <span className="font-mono text-[11px] text-[#64748B]">
-                            {p.progresso || 0}%
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-3 font-semibold text-[#1E293B] tabular-nums">
-                        {formatBRL(p.valor_total)}
-                      </td>
-                      <td className="py-3 pr-2 text-right">
-                        <Button
-                          asChild
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 px-2 text-[#1FAF7A]"
-                        >
-                          <Link to={`/projetos/${p.id}`}>
-                            Ver detalhes
-                            <ExternalLink className="w-3.5 h-3.5 ml-1" />
+                  {safeProjetos.slice(0, 5).map((p) => {
+                    const progVal = Number(p.progresso) || 0
+                    const clampedProg = Math.min(100, Math.max(0, progVal))
+                    return (
+                      <tr
+                        key={p.id}
+                        className="hover:bg-slate-50 transition-colors group cursor-pointer"
+                      >
+                        <td className="py-3 pl-2 font-semibold text-[#1E293B]">
+                          <Link to={`/projetos/${p.id}`} className="hover:text-[#1FAF7A]">
+                            {p.nome || 'Projeto sem nome'}
                           </Link>
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="py-3 px-3 text-[#64748B]">{p.parceiro || '—'}</td>
+                        <td className="py-3 px-3">
+                          <StatusBadge status={p.status || 'ativo'} />
+                        </td>
+                        <td className="py-3 px-3 w-40">
+                          <div className="flex items-center gap-2">
+                            <Progress value={clampedProg} className="h-2 flex-1" />
+                            <span className="font-mono text-[11px] text-[#64748B]">
+                              {clampedProg}%
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-3 font-semibold text-[#1E293B] tabular-nums">
+                          {formatBRL(Number(p.valor_total) || 0)}
+                        </td>
+                        <td className="py-3 pr-2 text-right">
+                          <Button
+                            asChild
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 px-2 text-[#1FAF7A]"
+                          >
+                            <Link to={`/projetos/${p.id}`}>
+                              Ver detalhes
+                              <ExternalLink className="w-3.5 h-3.5 ml-1" />
+                            </Link>
+                          </Button>
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>

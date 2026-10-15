@@ -637,7 +637,7 @@ export default function ConveniosList() {
                         Valor Global
                       </span>
                       <span className="font-bold text-sm text-[#1E293B] tabular-nums">
-                        {formatBRL(conv.valor_global)}
+                        {formatBRL(Number(conv.valor_global) || 0)}
                       </span>
                     </div>
                   </div>

@@ -263,7 +263,9 @@ export default function Layout() {
                                 : 'Administrador'}
                       </span>
                       {user?.equipe && (
-                        <span className="text-[10px] text-[#94A3B8] truncate">• {user.equipe}</span>
+                        <span className="text-[10px] text-[#94A3B8] truncate">
+                          • {String(user.equipe)}
+                        </span>
                       )}
                     </div>
                   </div>
@@ -290,7 +292,7 @@ export default function Layout() {
                     </span>
                     {user?.equipe && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-medium">
-                        {user.equipe}
+                        {String(user.equipe)}
                       </span>
                     )}
                   </div>
