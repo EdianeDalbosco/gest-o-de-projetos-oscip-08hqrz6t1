@@ -14,7 +14,7 @@ import {
   X,
   LogOut,
   Plus,
-  Sprout,
+  HeartHandshake,
   ChevronDown,
   Building2,
   Check,
@@ -177,7 +177,7 @@ export default function Layout() {
         {/* Logo */}
         <div className="h-16 flex items-center justify-center lg:justify-start px-4 lg:px-6 border-b border-[#E2E8F0] gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#1FAF7A] to-[#2ED3A0] flex items-center justify-center text-white shadow-sm shadow-[#1FAF7A]/30 shrink-0">
-            <Sprout className="w-5 h-5" />
+            <HeartHandshake className="w-5 h-5" />
           </div>
           <div className="hidden lg:flex flex-col leading-tight">
             <span className="font-bold text-base text-[#1E293B] tracking-tight">
@@ -340,7 +340,7 @@ export default function Layout() {
             <div className="h-16 flex items-center justify-between px-6 border-b border-[#E2E8F0]">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#1FAF7A] to-[#2ED3A0] flex items-center justify-center text-white">
-                  <Sprout className="w-5 h-5" />
+                  <HeartHandshake className="w-5 h-5" />
                 </div>
                 <span className="font-bold text-base text-[#1E293B]">
                   ONG <span className="text-[#1FAF7A]">Gestão</span>

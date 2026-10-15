@@ -1,5 +1,5 @@
 import React from 'react'
-import { Sprout } from 'lucide-react'
+import { HeartHandshake } from 'lucide-react'
 
 interface AuthLayoutProps {
   title: string
@@ -13,7 +13,7 @@ export function AuthLayout({ title, subtitle, children }: AuthLayoutProps) {
       <div className="w-full max-w-[420px] bg-white rounded-2xl shadow-xl border border-slate-100 p-8">
         <div className="flex flex-col items-center text-center mb-8">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#1FAF7A] to-[#2ED3A0] flex items-center justify-center text-white shadow-md shadow-[#1FAF7A]/20 mb-3">
-            <Sprout className="w-8 h-8" />
+            <HeartHandshake className="w-8 h-8" />
           </div>
           <span className="text-xl font-bold tracking-tight text-[#1E293B]">
             ONG <span className="text-[#1FAF7A]">Gestão</span>
